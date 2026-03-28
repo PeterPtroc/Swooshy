@@ -97,17 +97,27 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
         currentPanelSize = panelSize(for: style)
         panel.setContentSize(currentPanelSize)
 
-        let visualEffectView = NSVisualEffectView(frame: NSRect(origin: .zero, size: currentPanelSize))
-        visualEffectView.material = material(for: style)
-        visualEffectView.blendingMode = blendingMode(for: style)
-        visualEffectView.state = .active
-        visualEffectView.wantsLayer = true
-        visualEffectView.layer?.cornerRadius = cornerRadius(for: style)
-        visualEffectView.layer?.masksToBounds = true
-        visualEffectView.layer?.backgroundColor = backgroundColor(for: style).cgColor
-        visualEffectView.layer?.borderColor = borderColor(for: style).cgColor
-        visualEffectView.layer?.borderWidth = borderWidth(for: style)
-        visualEffectView.translatesAutoresizingMaskIntoConstraints = false
+        let contentRoot: NSView
+        if style == .minimal {
+            let transparentView = NSView(frame: NSRect(origin: .zero, size: currentPanelSize))
+            transparentView.wantsLayer = true
+            transparentView.layer?.backgroundColor = NSColor.clear.cgColor
+            transparentView.translatesAutoresizingMaskIntoConstraints = false
+            contentRoot = transparentView
+        } else {
+            let visualEffectView = NSVisualEffectView(frame: NSRect(origin: .zero, size: currentPanelSize))
+            visualEffectView.material = material(for: style)
+            visualEffectView.blendingMode = blendingMode(for: style)
+            visualEffectView.state = .active
+            visualEffectView.wantsLayer = true
+            visualEffectView.layer?.cornerRadius = cornerRadius(for: style)
+            visualEffectView.layer?.masksToBounds = true
+            visualEffectView.layer?.backgroundColor = backgroundColor(for: style).cgColor
+            visualEffectView.layer?.borderColor = borderColor(for: style).cgColor
+            visualEffectView.layer?.borderWidth = borderWidth(for: style)
+            visualEffectView.translatesAutoresizingMaskIntoConstraints = false
+            contentRoot = visualEffectView
+        }
 
         messageLabel.font = .systemFont(ofSize: 12, weight: .medium)
         messageLabel.textColor = .labelColor
@@ -116,7 +126,7 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
         messageLabel.lineBreakMode = .byTruncatingMiddle
         messageLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        titleLabel.font = .systemFont(ofSize: style == .minimal ? 12 : 13, weight: .semibold)
+        titleLabel.font = .systemFont(ofSize: style == .elegant ? 12 : 13, weight: .semibold)
         titleLabel.textColor = .labelColor
         titleLabel.maximumNumberOfLines = 1
         titleLabel.lineBreakMode = .byTruncatingTail
@@ -129,9 +139,11 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         glyphView.translatesAutoresizingMaskIntoConstraints = false
-        glyphView.glyphStyle = style == .swishLike ? .trackpad : .minimal
+        glyphView.glyphStyle = .minimal
         glyphView.primaryColor = glyphColor(for: style)
         glyphView.secondaryColor = glyphSecondaryColor(for: style)
+        glyphView.lineWidth = glyphLineWidth(for: style)
+        glyphView.glowLineWidth = glyphGlowLineWidth(for: style)
 
         glyphBadgeView.translatesAutoresizingMaskIntoConstraints = false
         glyphBadgeView.wantsLayer = true
@@ -144,14 +156,14 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
 
         switch style {
         case .classic:
-            visualEffectView.addSubview(messageLabel)
+            contentRoot.addSubview(messageLabel)
             NSLayoutConstraint.activate([
-                messageLabel.leadingAnchor.constraint(equalTo: visualEffectView.leadingAnchor, constant: 12),
-                messageLabel.trailingAnchor.constraint(equalTo: visualEffectView.trailingAnchor, constant: -12),
-                messageLabel.topAnchor.constraint(equalTo: visualEffectView.topAnchor, constant: 10),
-                messageLabel.bottomAnchor.constraint(equalTo: visualEffectView.bottomAnchor, constant: -10),
+                messageLabel.leadingAnchor.constraint(equalTo: contentRoot.leadingAnchor, constant: 12),
+                messageLabel.trailingAnchor.constraint(equalTo: contentRoot.trailingAnchor, constant: -12),
+                messageLabel.topAnchor.constraint(equalTo: contentRoot.topAnchor, constant: 10),
+                messageLabel.bottomAnchor.constraint(equalTo: contentRoot.bottomAnchor, constant: -10),
             ])
-        case .minimal:
+        case .elegant:
             let row = NSStackView()
             row.orientation = .horizontal
             row.spacing = 10
@@ -167,61 +179,32 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
             glyphBadgeView.addSubview(glyphView)
             row.addArrangedSubview(glyphBadgeView)
             row.addArrangedSubview(textStack)
-            visualEffectView.addSubview(row)
+            contentRoot.addSubview(row)
 
             NSLayoutConstraint.activate([
-                row.leadingAnchor.constraint(equalTo: visualEffectView.leadingAnchor),
-                row.trailingAnchor.constraint(equalTo: visualEffectView.trailingAnchor),
-                row.topAnchor.constraint(equalTo: visualEffectView.topAnchor),
-                row.bottomAnchor.constraint(equalTo: visualEffectView.bottomAnchor),
+                row.leadingAnchor.constraint(equalTo: contentRoot.leadingAnchor),
+                row.trailingAnchor.constraint(equalTo: contentRoot.trailingAnchor),
+                row.topAnchor.constraint(equalTo: contentRoot.topAnchor),
+                row.bottomAnchor.constraint(equalTo: contentRoot.bottomAnchor),
                 glyphBadgeView.widthAnchor.constraint(equalToConstant: 24),
                 glyphBadgeView.heightAnchor.constraint(equalToConstant: 24),
                 glyphView.centerXAnchor.constraint(equalTo: glyphBadgeView.centerXAnchor),
                 glyphView.centerYAnchor.constraint(equalTo: glyphBadgeView.centerYAnchor),
-                glyphView.widthAnchor.constraint(equalToConstant: 16),
-                glyphView.heightAnchor.constraint(equalToConstant: 16),
+                glyphView.widthAnchor.constraint(equalToConstant: 20),
+                glyphView.heightAnchor.constraint(equalToConstant: 20),
             ])
-        case .swishLike:
-            titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
-            titleLabel.textColor = NSColor.white.withAlphaComponent(0.96)
-            titleLabel.alignment = .center
-
-            subtitleLabel.font = .systemFont(ofSize: 11, weight: .medium)
-            subtitleLabel.textColor = NSColor.white.withAlphaComponent(0.64)
-            subtitleLabel.alignment = .center
-
-            let textStack = NSStackView(views: [titleLabel, subtitleLabel])
-            textStack.orientation = .vertical
-            textStack.spacing = 2
-            textStack.alignment = .centerX
-            textStack.translatesAutoresizingMaskIntoConstraints = false
-
-            glyphBadgeView.addSubview(glyphView)
-
-            let contentStack = NSStackView(views: [glyphBadgeView, textStack])
-            contentStack.orientation = .vertical
-            contentStack.spacing = 10
-            contentStack.alignment = .centerX
-            contentStack.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-            contentStack.translatesAutoresizingMaskIntoConstraints = false
-
-            visualEffectView.addSubview(contentStack)
+        case .minimal:
+            contentRoot.addSubview(glyphView)
 
             NSLayoutConstraint.activate([
-                contentStack.leadingAnchor.constraint(equalTo: visualEffectView.leadingAnchor),
-                contentStack.trailingAnchor.constraint(equalTo: visualEffectView.trailingAnchor),
-                contentStack.topAnchor.constraint(equalTo: visualEffectView.topAnchor),
-                contentStack.bottomAnchor.constraint(equalTo: visualEffectView.bottomAnchor),
-                glyphBadgeView.widthAnchor.constraint(equalToConstant: 44),
-                glyphBadgeView.heightAnchor.constraint(equalToConstant: 44),
-                glyphView.centerXAnchor.constraint(equalTo: glyphBadgeView.centerXAnchor),
-                glyphView.centerYAnchor.constraint(equalTo: glyphBadgeView.centerYAnchor),
-                glyphView.widthAnchor.constraint(equalToConstant: 26),
-                glyphView.heightAnchor.constraint(equalToConstant: 26),
+                glyphView.centerXAnchor.constraint(equalTo: contentRoot.centerXAnchor),
+                glyphView.centerYAnchor.constraint(equalTo: contentRoot.centerYAnchor),
+                glyphView.widthAnchor.constraint(equalToConstant: 18),
+                glyphView.heightAnchor.constraint(equalToConstant: 18),
             ])
         }
 
-        panel.contentView = visualEffectView
+        panel.contentView = contentRoot
         panel.alphaValue = 0
     }
 
@@ -264,10 +247,10 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
         switch style {
         case .classic:
             return NSSize(width: 208, height: 42)
-        case .minimal:
+        case .elegant:
             return NSSize(width: 182, height: 40)
-        case .swishLike:
-            return NSSize(width: 132, height: 98)
+        case .minimal:
+            return NSSize(width: 48, height: 48)
         }
     }
 
@@ -275,73 +258,73 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
         switch style {
         case .classic:
             return 14
-        case .minimal:
+        case .elegant:
             return 12
-        case .swishLike:
-            return 26
+        case .minimal:
+            return 0
         }
     }
 
     private func backgroundColor(for style: GestureHUDStyle) -> NSColor {
         switch style {
-        case .classic, .minimal:
+        case .classic, .elegant:
             return .clear
-        case .swishLike:
-            return NSColor(calibratedWhite: 0.06, alpha: 0.80)
+        case .minimal:
+            return .clear
         }
     }
 
     private func borderColor(for style: GestureHUDStyle) -> NSColor {
         switch style {
-        case .classic, .minimal:
+        case .classic, .elegant:
             return .clear
-        case .swishLike:
-            return NSColor.white.withAlphaComponent(0.16)
+        case .minimal:
+            return .clear
         }
     }
 
     private func borderWidth(for style: GestureHUDStyle) -> CGFloat {
         switch style {
-        case .classic, .minimal:
+        case .classic, .elegant:
             return 0
-        case .swishLike:
-            return 0.8
+        case .minimal:
+            return 0
         }
     }
 
     private func material(for style: GestureHUDStyle) -> NSVisualEffectView.Material {
         switch style {
-        case .classic, .minimal:
+        case .classic, .elegant:
             return .hudWindow
-        case .swishLike:
-            return .menu
+        case .minimal:
+            return .hudWindow
         }
     }
 
     private func blendingMode(for style: GestureHUDStyle) -> NSVisualEffectView.BlendingMode {
         switch style {
-        case .classic, .minimal:
+        case .classic, .elegant:
             return .behindWindow
-        case .swishLike:
-            return .withinWindow
+        case .minimal:
+            return .behindWindow
         }
     }
 
     private func glyphColor(for style: GestureHUDStyle) -> NSColor {
         switch style {
-        case .classic, .minimal:
+        case .classic:
             return NSColor.labelColor.withAlphaComponent(0.9)
-        case .swishLike:
-            return NSColor.white.withAlphaComponent(0.98)
+        case .elegant, .minimal:
+            return NSColor.white.withAlphaComponent(0.95)
         }
     }
 
     private func glyphSecondaryColor(for style: GestureHUDStyle) -> NSColor {
         switch style {
-        case .classic, .minimal:
+        case .classic, .elegant:
             return NSColor.labelColor.withAlphaComponent(0.16)
-        case .swishLike:
-            return NSColor.white.withAlphaComponent(0.18)
+        case .minimal:
+            return NSColor.black.withAlphaComponent(0.44)
         }
     }
 
@@ -349,10 +332,8 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
         switch style {
         case .classic:
             return .clear
-        case .minimal:
-            return NSColor.labelColor.withAlphaComponent(0.08)
-        case .swishLike:
-            return NSColor.white.withAlphaComponent(0.08)
+        case .elegant, .minimal:
+            return .clear
         }
     }
 
@@ -360,10 +341,8 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
         switch style {
         case .classic:
             return .clear
-        case .minimal:
-            return NSColor.labelColor.withAlphaComponent(0.08)
-        case .swishLike:
-            return NSColor.white.withAlphaComponent(0.12)
+        case .elegant, .minimal:
+            return .clear
         }
     }
 
@@ -371,10 +350,8 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
         switch style {
         case .classic:
             return 0
-        case .minimal:
-            return 0.5
-        case .swishLike:
-            return 1
+        case .elegant, .minimal:
+            return 0
         }
     }
 
@@ -383,9 +360,29 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
         case .classic:
             return 0
         case .minimal:
+            return 0
+        case .elegant:
             return 8
-        case .swishLike:
-            return 14
+        }
+    }
+
+    private func glyphLineWidth(for style: GestureHUDStyle) -> CGFloat {
+        switch style {
+        case .classic, .elegant:
+            return 2.2
+        case .minimal:
+            return 2.2
+        }
+    }
+
+    private func glyphGlowLineWidth(for style: GestureHUDStyle) -> CGFloat {
+        switch style {
+        case .classic:
+            return 0
+        case .minimal:
+            return 5.8
+        case .elegant:
+            return 4.8
         }
     }
 }
@@ -412,6 +409,14 @@ private final class GestureGlyphView: NSView {
         didSet { needsDisplay = true }
     }
 
+    var lineWidth: CGFloat = 2.2 {
+        didSet { needsDisplay = true }
+    }
+
+    var glowLineWidth: CGFloat = 4.8 {
+        didSet { needsDisplay = true }
+    }
+
     override var isFlipped: Bool { true }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -432,7 +437,13 @@ private final class GestureGlyphView: NSView {
         let glyphRect = sanitizedRect(from: rect.insetBy(dx: 2, dy: 2), minimumSize: 8)
         guard glyphRect.isEmpty == false else { return }
 
-        let path = gestureArrowPath(in: glyphRect, lineWidth: 2.2)
+        if secondaryColor.alphaComponent > 0.01, glowLineWidth > lineWidth {
+            let glowPath = gestureArrowPath(in: glyphRect, lineWidth: glowLineWidth)
+            secondaryColor.setStroke()
+            glowPath.stroke()
+        }
+
+        let path = gestureArrowPath(in: glyphRect, lineWidth: lineWidth)
         primaryColor.setStroke()
         path.stroke()
     }
@@ -521,5 +532,35 @@ private final class GestureGlyphView: NSView {
 
         path.move(to: start)
         path.line(to: end)
+    }
+}
+
+private final class GlassHighlightView: NSView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+
+        let gradientLayer = CAGradientLayer()
+        gradientLayer.colors = [
+            NSColor.white.withAlphaComponent(0.34).cgColor,
+            NSColor.white.withAlphaComponent(0.10).cgColor,
+            NSColor.clear.cgColor,
+        ]
+        gradientLayer.locations = [0, 0.38, 1]
+        gradientLayer.startPoint = CGPoint(x: 0.18, y: 1)
+        gradientLayer.endPoint = CGPoint(x: 0.82, y: 0)
+        gradientLayer.cornerRadius = 21
+        layer = gradientLayer
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layout() {
+        super.layout()
+        layer?.frame = bounds
+        layer?.cornerRadius = bounds.height / 2
     }
 }

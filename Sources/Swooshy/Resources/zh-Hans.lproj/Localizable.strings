@@ -40,8 +40,8 @@
 "settings.gesture_hud.style.label" = "手势 HUD 风格";
 "settings.gesture_hud.footer" = "Dock 和标题栏手势共用同一个触控板监控。你可以在这里切换屏幕上的手势提示风格。";
 "settings.gesture_hud.style.classic" = "详细";
-"settings.gesture_hud.style.minimal" = "优雅";
-"settings.gesture_hud.style.swish_like" = "极简";
+"settings.gesture_hud.style.elegant" = "优雅";
+"settings.gesture_hud.style.minimal" = "极简";
 "settings.dock_gestures.footer" = "这些映射只在指针悬停在 Dock 项目上时生效。";
 "settings.title_bar_gestures.footer" = "这些映射只在指针悬停在最前窗口的标题栏上时生效。";
 "settings.dock_gestures.gesture.swipe_left" = "双指左滑";

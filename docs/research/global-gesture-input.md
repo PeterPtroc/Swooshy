@@ -1,13 +1,13 @@
-# Swish-Like Input Research
+# Global Gesture Input Research
 
 Last updated: 2026-03-28
 
-This note captures what we know about building a Swish-like interaction layer
+This note captures what we know about building a global gesture interaction layer
 for Swooshy without App Store constraints.
 
 ## Bottom Line
 
-It is realistic to build a `Swish-like experimental path` for Dock-triggered
+It is realistic to build an experimental path for Dock-triggered
 interactions, but not by relying on public AppKit gesture APIs alone.
 
 The likely architecture is:
@@ -21,26 +21,19 @@ experimental module until the input layer proves stable.
 
 ## What We Know
 
-### 1. Swish publicly says it depends on low-level, non-sandboxable behavior
+### 1. Comparable gesture-first utilities appear to depend on low-level,
+### non-sandboxable behavior
 
-Swish states that it cannot ship through the Mac App Store because it requires
-`low-level system operations`, and Apple only allows sandboxed apps in the
-store. This is a strong signal that it is not implemented purely with ordinary
-public, sandbox-friendly APIs.
+Public product messaging in this category commonly points to low-level system
+operations and non-App-Store distribution. That is a strong signal that these
+tools are not implemented purely with ordinary public, sandbox-friendly APIs.
 
-Source:
-- https://highlyopinionated.co/swish/
+### 2. Comparable utilities also rely on region-aware input context
 
-### 2. Swish publicly says it listens to cursor movement and keyboard events
-
-Swish's legal page explicitly says the app needs to listen to `cursor movement`
-and `keyboard events` to function.
-
-Source:
-- https://highlyopinionated.co/legal/
-
-This does not prove how Swish captures trackpad gestures, but it strongly
-supports the idea that region-aware interaction is part of the product design.
+Public disclosures for this class of app commonly mention `cursor movement`
+and `keyboard events` as part of the feature set. This does not prove how a
+gesture layer is captured, but it strongly supports the idea that region-aware
+interaction is part of the product design.
 
 ### 3. Public AppKit touch and gesture APIs are not enough for a background,
 ### global gesture tool
@@ -55,7 +48,7 @@ Source:
 
 Inference:
 - Public gesture APIs are suitable for app-local interactions
-- They are not a reliable foundation for a Swish-style global gesture layer
+- They are not a reliable foundation for a global gesture layer
 
 ### 4. OpenMultitouchSupport is the clearest public clue for the likely input
 ### direction
@@ -69,8 +62,8 @@ Source:
 - https://cocoapods.org/pods/OpenMultitouchSupport
 
 Inference:
-- A Swish-like global trackpad experience is most likely built on a similarly
-  low-level input path
+- A global trackpad experience is most likely built on a similarly low-level
+  input path
 - This should be treated as experimental, private-framework work
 
 ## Local Feasibility Probe on This Machine
@@ -109,7 +102,7 @@ This remains the reliable release path.
 
 ### Experimental branch
 
-Add a separate experimental module for Swish-like interactions:
+Add a separate experimental module for global gesture interactions:
 
 - `DockAccessibilityProbe`
   - enumerate `AXDockItem`
