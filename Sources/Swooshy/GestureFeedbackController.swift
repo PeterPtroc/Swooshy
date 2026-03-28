@@ -470,10 +470,7 @@ private final class GestureGlyphView: NSView {
 
     private func gestureArrowPath(in rect: NSRect, lineWidth: CGFloat) -> NSBezierPath {
         let rect = rect.standardized
-        let path = NSBezierPath()
-        path.lineCapStyle = .round
-        path.lineJoinStyle = .round
-        path.lineWidth = lineWidth
+        let path = CGMutablePath()
 
         switch gesture {
         case .swipeLeft:
@@ -499,7 +496,11 @@ private final class GestureGlyphView: NSView {
             addLine(to: path, from: CGPoint(x: rect.maxX - 1, y: rect.maxY - 1), to: CGPoint(x: rect.midX + 2, y: rect.midY + 2))
         }
 
-        return path
+        let bezierPath = NSBezierPath(cgPath: path)
+        bezierPath.lineCapStyle = .round
+        bezierPath.lineJoinStyle = .round
+        bezierPath.lineWidth = lineWidth
+        return bezierPath
     }
 
     private func sanitizedRect(from rect: NSRect, minimumSize: CGFloat) -> NSRect {
@@ -520,7 +521,7 @@ private final class GestureGlyphView: NSView {
         return standardized
     }
 
-    private func addLine(to path: NSBezierPath, from start: CGPoint, to end: CGPoint) {
+    private func addLine(to path: CGMutablePath, from start: CGPoint, to end: CGPoint) {
         guard
             start.x.isFinite,
             start.y.isFinite,
@@ -531,7 +532,7 @@ private final class GestureGlyphView: NSView {
         }
 
         path.move(to: start)
-        path.line(to: end)
+        path.addLine(to: end)
     }
 }
 
