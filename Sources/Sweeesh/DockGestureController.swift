@@ -47,8 +47,10 @@ final class DockGestureController {
 
     private func syncMonitoring() {
         if settingsStore.dockGesturesEnabled {
+            DebugLog.info(DebugLog.dock, "Starting experimental Dock gesture monitoring")
             monitor.startIfAvailable()
         } else {
+            DebugLog.info(DebugLog.dock, "Stopping experimental Dock gesture monitoring")
             monitor.stop()
         }
     }
@@ -57,6 +59,10 @@ final class DockGestureController {
         guard settingsStore.dockGesturesEnabled else { return }
 
         let hoveredApplication = dockProbe.hoveredApplicationName(at: NSEvent.mouseLocation)
+        DebugLog.debug(
+            DebugLog.dock,
+            "Received touch frame with \(frame.touches.count) touches; hovered application = \(hoveredApplication ?? "nil")"
+        )
         guard let event = recognizer.process(frame: frame, hoveredApplicationName: hoveredApplication) else {
             return
         }
@@ -64,15 +70,17 @@ final class DockGestureController {
         do {
             switch event {
             case .minimize(let applicationName):
+                DebugLog.info(DebugLog.dock, "Dock swipe minimize for \(applicationName)")
                 _ = try windowManager.minimizeVisibleWindow(ofApplicationNamed: applicationName)
             case .restore(let applicationName):
+                DebugLog.info(DebugLog.dock, "Dock swipe restore for \(applicationName)")
                 _ = try windowManager.restoreMinimizedWindow(ofApplicationNamed: applicationName)
             }
         } catch let error as WindowManagerError {
             handleWindowManagerError(error)
         } catch {
             NSSound.beep()
-            NSLog("Dock gesture action failed: %@", error.localizedDescription)
+            DebugLog.error(DebugLog.dock, "Dock gesture action failed: \(error.localizedDescription)")
         }
     }
 
@@ -87,7 +95,7 @@ final class DockGestureController {
                 message: settingsStore.localized("alert.permission_required.message")
             )
         default:
-            NSLog("Dock gesture action failed: %@", error.localizedDescription)
+            DebugLog.error(DebugLog.dock, "Dock gesture action failed: \(error.localizedDescription)")
         }
     }
 }
@@ -130,6 +138,7 @@ private struct DockAccessibilityProbe {
             )
 
             if appKitFrame.contains(appKitPoint) {
+                DebugLog.debug(DebugLog.dock, "Pointer hit Dock item \(itemName) at \(NSStringFromPoint(appKitPoint))")
                 return itemName
             }
         }
@@ -198,7 +207,9 @@ private final class MultitouchInputMonitor {
         let context = Unmanaged.passUnretained(self).toOpaque()
         isMonitoring = SweeeshMTStartMonitoring(multitouchCallback, context)
         if isMonitoring == false {
-            NSLog("MultitouchSupport monitoring unavailable")
+            DebugLog.error(DebugLog.dock, "MultitouchSupport monitoring unavailable")
+        } else {
+            DebugLog.info(DebugLog.dock, "MultitouchSupport monitoring active")
         }
     }
 
@@ -206,6 +217,7 @@ private final class MultitouchInputMonitor {
         guard isMonitoring else { return }
         SweeeshMTStopMonitoring()
         isMonitoring = false
+        DebugLog.info(DebugLog.dock, "MultitouchSupport monitoring stopped")
     }
 
     fileprivate func receive(

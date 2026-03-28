@@ -78,6 +78,13 @@ private struct SettingsView: View {
                     settingsStore.localized("settings.dock_gestures.enabled"),
                     isOn: $settingsStore.dockGesturesEnabled
                 )
+
+                #if DEBUG
+                Toggle(
+                    settingsStore.localized("settings.debug_logging.enabled"),
+                    isOn: $settingsStore.debugLoggingEnabled
+                )
+                #endif
             }
 
             Section(settingsStore.localized("settings.section.shortcuts")) {

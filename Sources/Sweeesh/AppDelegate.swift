@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let settingsStore = SettingsStore()
+        DebugLog.info(DebugLog.app, "Sweeesh launch sequence started")
         let permissionManager = AccessibilityPermissionManager()
         let windowManager = WindowManager()
         let layoutEngine = WindowLayoutEngine()
@@ -40,5 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             alertPresenter: alertPresenter,
             settingsStore: settingsStore
         )
+
+        DebugLog.info(DebugLog.app, "Sweeesh launch sequence completed")
     }
 }

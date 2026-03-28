@@ -59,9 +59,11 @@ final class GlobalHotKeyController {
         unregisterHotKeys()
 
         guard settingsStore.hotKeysEnabled else {
+            DebugLog.info(DebugLog.hotkeys, "Global hotkeys disabled")
             return
         }
 
+        DebugLog.info(DebugLog.hotkeys, "Registering global hotkeys")
         registerHotKeys()
     }
 
@@ -84,11 +86,14 @@ final class GlobalHotKeyController {
 
             if status == noErr {
                 hotKeyRefs.append(hotKeyRef)
+                DebugLog.debug(
+                    DebugLog.hotkeys,
+                    "Registered hotkey for \(binding.action.title(preferredLanguages: settingsStore.preferredLanguages)) as \(binding.modifiers.displayString)\(binding.menuDisplayKey)"
+                )
             } else {
-                NSLog(
-                    "Failed to register hot key for action %@ with status %d",
-                    String(describing: binding.action),
-                    status
+                DebugLog.error(
+                    DebugLog.hotkeys,
+                    "Failed to register hotkey for \(binding.action.title(preferredLanguages: settingsStore.preferredLanguages)) with status \(status)"
                 )
             }
         }
@@ -107,6 +112,7 @@ final class GlobalHotKeyController {
     private func handleHotKey(withID identifier: UInt32) {
         guard settingsStore.hotKeysEnabled else { return }
         guard let action = WindowAction(rawValue: Int(identifier - 1)) else { return }
+        DebugLog.info(DebugLog.hotkeys, "Triggered hotkey for action \(action.title(preferredLanguages: settingsStore.preferredLanguages))")
 
         do {
             try windowActionRunner.run(action)
@@ -114,7 +120,7 @@ final class GlobalHotKeyController {
             handleWindowManagerError(error)
         } catch {
             NSSound.beep()
-            NSLog("Hot key action failed: %@", error.localizedDescription)
+            DebugLog.error(DebugLog.hotkeys, "Hot key action failed: \(error.localizedDescription)")
         }
     }
 
@@ -133,7 +139,7 @@ final class GlobalHotKeyController {
             )
         default:
             NSSound.beep()
-            NSLog("Hot key action failed: %@", error.localizedDescription)
+            DebugLog.error(DebugLog.hotkeys, "Hot key action failed: \(error.localizedDescription)")
         }
     }
 

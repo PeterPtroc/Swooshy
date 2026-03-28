@@ -31,14 +31,27 @@ final class SettingsStore {
         didSet {
             guard oldValue != dockGesturesEnabled else { return }
             userDefaults.set(dockGesturesEnabled, forKey: Keys.dockGesturesEnabled)
+            DebugLog.info(DebugLog.settings, "Dock gestures enabled set to \(dockGesturesEnabled)")
             notifyDidChange()
         }
     }
+
+    #if DEBUG
+    var debugLoggingEnabled: Bool {
+        didSet {
+            guard oldValue != debugLoggingEnabled else { return }
+            userDefaults.set(debugLoggingEnabled, forKey: Keys.debugLoggingEnabled)
+            DebugLog.info(DebugLog.settings, "Debug logging enabled set to \(debugLoggingEnabled)")
+            notifyDidChange()
+        }
+    }
+    #endif
 
     var hotKeyBindings: [HotKeyBinding] {
         didSet {
             guard oldValue != hotKeyBindings else { return }
             persistHotKeyBindings()
+            DebugLog.debug(DebugLog.settings, "Persisted \(hotKeyBindings.count) hot key bindings")
             notifyDidChange()
         }
     }
@@ -62,6 +75,13 @@ final class SettingsStore {
         } else {
             self.dockGesturesEnabled = userDefaults.bool(forKey: Keys.dockGesturesEnabled)
         }
+        #if DEBUG
+        if userDefaults.object(forKey: Keys.debugLoggingEnabled) == nil {
+            self.debugLoggingEnabled = false
+        } else {
+            self.debugLoggingEnabled = userDefaults.bool(forKey: Keys.debugLoggingEnabled)
+        }
+        #endif
         self.hotKeyBindings = Self.decodeHotKeyBindings(from: userDefaults) ?? HotKeyBindings.defaults
     }
 
@@ -143,6 +163,9 @@ final class SettingsStore {
         static let languageOverride = "settings.languageOverride"
         static let hotKeysEnabled = "settings.hotKeysEnabled"
         static let dockGesturesEnabled = "settings.dockGesturesEnabled"
+        #if DEBUG
+        static let debugLoggingEnabled = "settings.debugLoggingEnabled"
+        #endif
         static let hotKeyBindings = "settings.hotKeyBindings"
     }
 }

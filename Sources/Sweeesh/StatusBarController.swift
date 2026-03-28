@@ -52,6 +52,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         menu.removeAllItems()
 
         let permissionGranted = permissionManager.isTrusted(promptIfNeeded: false)
+        DebugLog.debug(DebugLog.app, "Rebuilding status menu; accessibility granted = \(permissionGranted)")
         let entries = menuContentBuilder.makeEntries(
             permissionGranted: permissionGranted,
             preferredLanguages: settingsStore.preferredLanguages
@@ -77,6 +78,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     @objc
     private func requestAccessibilityAccess() {
         let granted = permissionManager.isTrusted(promptIfNeeded: true)
+        DebugLog.info(DebugLog.accessibility, "Accessibility prompt result = \(granted)")
 
         if !granted {
             alertPresenter.show(
@@ -90,16 +92,19 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc
     private func refreshPermissionState() {
+        DebugLog.debug(DebugLog.accessibility, "Refreshing accessibility permission state")
         rebuildMenu()
     }
 
     @objc
     private func runWindowAction(_ sender: NSMenuItem) {
         guard let action = sender.representedObject as? WindowAction else { return }
+        DebugLog.info(DebugLog.app, "Menu triggered action \(action.title(preferredLanguages: settingsStore.preferredLanguages))")
 
         do {
             try windowActionRunner.run(action)
         } catch {
+            DebugLog.error(DebugLog.app, "Menu action failed: \(error.localizedDescription)")
             alertPresenter.show(
                 title: settingsStore.localized("alert.window_action_failed.title"),
                 message: error.localizedDescription

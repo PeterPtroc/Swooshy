@@ -47,6 +47,12 @@ core behavior is stable and useful.
 - Swipe up with two fingers on the trackpad to restore one minimized window for that app
 - This path depends on private multitouch APIs and should be treated as experimental
 
+## Debug Logging
+
+- Debug builds can enable detailed logs from `Settings… > Enable debug logging`
+- You can also force logs on at launch with `SWEEESH_DEBUG_LOGS=1 swift run`
+- Release builds keep these verbose logs compiled out for a lighter runtime path
+
 ## Default Hotkeys
 
 - `Control + Option + Command + Left Arrow`: snap left half

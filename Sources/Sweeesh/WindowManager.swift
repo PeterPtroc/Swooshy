@@ -9,12 +9,14 @@ protocol WindowManaging {
 @MainActor
 struct WindowManager: WindowManaging {
     func perform(_ action: WindowAction, layoutEngine: WindowLayoutEngine) throws {
+        DebugLog.info(DebugLog.windows, "Performing window action \(String(describing: action))")
         if action == .quitApplication {
             try quitFrontmostApplication()
             return
         }
 
         guard AXIsProcessTrusted() else {
+            DebugLog.error(DebugLog.accessibility, "Accessibility permission missing before action \(String(describing: action))")
             throw WindowManagerError.accessibilityPermissionMissing
         }
 
@@ -63,6 +65,11 @@ struct WindowManager: WindowManaging {
             currentVisibleFrame: currentScreenFrame
         )
 
+        DebugLog.debug(
+            DebugLog.windows,
+            "Calculated target frame \(NSStringFromRect(targetFrame)) from current frame \(NSStringFromRect(currentFrame))"
+        )
+
         try setFrame(
             screenGeometry.axFrame(fromAppKitFrame: targetFrame),
             for: focusedWindow
@@ -82,15 +89,19 @@ struct WindowManager: WindowManaging {
             throw WindowManagerError.accessibilityPermissionMissing
         }
 
+        DebugLog.info(DebugLog.windows, "Attempting to minimize a visible window for \(applicationName)")
+
         let app = try runningApplication(named: applicationName)
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
         let windows = try windowElements(in: appElement).filter { !isMinimized($0) }
 
         guard let targetWindow = windows.first else {
+            DebugLog.debug(DebugLog.windows, "No visible window found to minimize for \(applicationName)")
             return false
         }
 
         try setMinimized(true, for: targetWindow)
+        DebugLog.info(DebugLog.windows, "Minimized one visible window for \(applicationName)")
         return true
     }
 
@@ -99,17 +110,21 @@ struct WindowManager: WindowManaging {
             throw WindowManagerError.accessibilityPermissionMissing
         }
 
+        DebugLog.info(DebugLog.windows, "Attempting to restore a minimized window for \(applicationName)")
+
         let app = try runningApplication(named: applicationName)
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
         let windows = try windowElements(in: appElement).filter { isMinimized($0) }
 
         guard let targetWindow = windows.first else {
             _ = app.activate(options: [.activateAllWindows])
+            DebugLog.debug(DebugLog.windows, "No minimized window found for \(applicationName); activated app instead")
             return false
         }
 
         try setMinimized(false, for: targetWindow)
         try bringWindowToFront(targetWindow, for: app)
+        DebugLog.info(DebugLog.windows, "Restored and raised one minimized window for \(applicationName)")
         return true
     }
 
@@ -118,6 +133,7 @@ struct WindowManager: WindowManaging {
             return app
         }
 
+        DebugLog.error(DebugLog.windows, "Unable to find running application named \(applicationName)")
         throw WindowManagerError.noFrontmostApplication
     }
 
@@ -202,6 +218,7 @@ struct WindowManager: WindowManaging {
     private func performAction(_ action: CFString, on element: AXUIElement) throws {
         let error = AXUIElementPerformAction(element, action)
         guard error == .success else {
+            DebugLog.error(DebugLog.accessibility, "AX action \(action as String) failed with error \(error.rawValue)")
             throw WindowManagerError.unableToPerformAction
         }
     }
@@ -222,6 +239,7 @@ struct WindowManager: WindowManaging {
         let cfValue: CFTypeRef = value ? kCFBooleanTrue : kCFBooleanFalse
         let error = AXUIElementSetAttributeValue(element, attribute, cfValue)
         guard error == .success else {
+            DebugLog.error(DebugLog.accessibility, "Failed to set AX bool attribute \(attribute as String) to \(value); error \(error.rawValue)")
             throw WindowManagerError.unableToPerformAction
         }
     }
@@ -253,6 +271,10 @@ struct WindowManager: WindowManaging {
         let positionError = AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, positionValue)
 
         guard sizeError == .success, positionError == .success else {
+            DebugLog.error(
+                DebugLog.accessibility,
+                "Failed to set frame. Size error = \(sizeError.rawValue), position error = \(positionError.rawValue)"
+            )
             throw WindowManagerError.unableToSetFrame
         }
     }
