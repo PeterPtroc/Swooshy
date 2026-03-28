@@ -127,7 +127,8 @@ private struct DockAccessibilityProbe {
                 continue
             }
 
-            guard NSWorkspace.shared.runningApplications.contains(where: { $0.localizedName == itemName }) else {
+            guard let matchedApplication = matchingRunningApplication(forDockItemNamed: itemName) else {
+                DebugLog.debug(DebugLog.dock, "Skipping Dock item \(itemName) because no running app alias matched")
                 continue
             }
 
@@ -145,14 +146,16 @@ private struct DockAccessibilityProbe {
             let candidate = DockItemCandidate(
                 name: itemName,
                 frame: appKitFrame,
-                distance: distance
+                distance: distance,
+                matchedApplicationName: matchedApplication.localizedName ?? itemName,
+                aliases: applicationAliases(for: matchedApplication)
             )
             candidates.append(candidate)
 
             if appKitFrame.contains(appKitPoint) {
                 DebugLog.debug(
                     DebugLog.dock,
-                    "Pointer hit Dock item \(itemName) at \(NSStringFromPoint(appKitPoint)); frame = \(NSStringFromRect(appKitFrame)); distance = \(String(format: "%.2f", distance))"
+                    "Pointer hit Dock item \(itemName) mapped to app \(matchedApplication.localizedName ?? itemName) at \(NSStringFromPoint(appKitPoint)); frame = \(NSStringFromRect(appKitFrame)); distance = \(String(format: "%.2f", distance)); aliases = \(applicationAliases(for: matchedApplication).joined(separator: "|"))"
                 )
                 return itemName
             }
@@ -162,7 +165,7 @@ private struct DockAccessibilityProbe {
             .sorted { $0.distance < $1.distance }
             .prefix(4)
             .map {
-                "\($0.name){frame=\(NSStringFromRect($0.frame)), distance=\(String(format: "%.2f", $0.distance))}"
+                "\($0.name){app=\($0.matchedApplicationName), frame=\(NSStringFromRect($0.frame)), distance=\(String(format: "%.2f", $0.distance)), aliases=\($0.aliases.joined(separator: "|"))}"
             }
             .joined(separator: ", ")
 
@@ -182,6 +185,43 @@ private struct DockAccessibilityProbe {
         let dx = max(frame.minX - point.x, 0, point.x - frame.maxX)
         let dy = max(frame.minY - point.y, 0, point.y - frame.maxY)
         return sqrt((dx * dx) + (dy * dy))
+    }
+
+    private func matchingRunningApplication(forDockItemNamed dockItemName: String) -> NSRunningApplication? {
+        NSWorkspace.shared.runningApplications.first { application in
+            applicationAliases(for: application).contains(dockItemName)
+        }
+    }
+
+    private func applicationAliases(for application: NSRunningApplication) -> [String] {
+        var aliases: Set<String> = []
+
+        if let localizedName = application.localizedName, localizedName.isEmpty == false {
+            aliases.insert(localizedName)
+        }
+
+        if let bundleURL = application.bundleURL {
+            aliases.insert(bundleURL.deletingPathExtension().lastPathComponent)
+
+            if
+                let bundle = Bundle(url: bundleURL),
+                let info = bundle.infoDictionary
+            {
+                let keys = [
+                    "CFBundleDisplayName",
+                    "CFBundleName",
+                    "CFBundleExecutable",
+                ]
+
+                for key in keys {
+                    if let value = info[key] as? String, value.isEmpty == false {
+                        aliases.insert(value)
+                    }
+                }
+            }
+        }
+
+        return Array(aliases)
     }
 
     private func childElements(attribute: CFString, from element: AXUIElement) -> [AXUIElement] {
@@ -237,6 +277,8 @@ private struct DockAccessibilityProbe {
         let name: String
         let frame: CGRect
         let distance: CGFloat
+        let matchedApplicationName: String
+        let aliases: [String]
     }
 }
 
