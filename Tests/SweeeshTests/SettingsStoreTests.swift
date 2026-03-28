@@ -82,4 +82,28 @@ struct SettingsStoreTests {
         let store = SettingsStore(userDefaults: defaults)
         #expect(store.dockGestureAction(for: .pinchIn) == .quitApplication)
     }
+
+    @Test
+    func horizontalDockGesturesUseWindowCyclingByDefault() {
+        let suiteName = "Sweeesh.SettingsStoreTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = SettingsStore(userDefaults: defaults)
+        #expect(store.dockGestureAction(for: .swipeLeft) == .cycleWindowsForward)
+        #expect(store.dockGestureAction(for: .swipeRight) == .cycleWindowsBackward)
+    }
+
+    @Test
+    func backwardWindowCyclingHotkeyHasDefaultBinding() {
+        let suiteName = "Sweeesh.SettingsStoreTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = SettingsStore(userDefaults: defaults)
+        let binding = store.hotKeyBinding(for: .cycleSameAppWindowsBackward)
+
+        #expect(binding.key == .grave)
+        #expect(binding.modifiers == .commandShiftOptionControl)
+    }
 }

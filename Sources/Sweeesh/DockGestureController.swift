@@ -94,6 +94,10 @@ final class DockGestureController {
                 _ = try windowManager.minimizeVisibleWindow(of: application)
             case .restoreWindow:
                 _ = try windowManager.restoreMinimizedWindow(of: application)
+            case .cycleWindowsForward:
+                _ = try windowManager.cycleVisibleWindows(of: application, direction: .forward)
+            case .cycleWindowsBackward:
+                _ = try windowManager.cycleVisibleWindows(of: application, direction: .backward)
             case .closeWindow:
                 _ = try windowManager.closeVisibleWindow(of: application)
             case .quitApplication:

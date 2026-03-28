@@ -43,6 +43,8 @@ core behavior is stable and useful.
 ## Experimental Dock Gestures
 
 - Hover an application icon in the Dock
+- Swipe left with two fingers on the trackpad to cycle that app's windows forward
+- Swipe right with two fingers on the trackpad to cycle that app's windows backward
 - Swipe down with two fingers on the trackpad to minimize one visible window for that app
 - Swipe up with two fingers on the trackpad to restore one minimized window for that app
 - Pinch in with two fingers on the trackpad to quit that app (default mapping)

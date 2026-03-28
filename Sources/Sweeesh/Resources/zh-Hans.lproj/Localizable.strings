@@ -14,7 +14,8 @@
 "action.restore_window" = "恢复最小化窗口";
 "action.close_window" = "关闭窗口";
 "action.quit_application" = "退出应用";
-"action.cycle_same_app_windows" = "切换同应用窗口";
+"action.cycle_same_app_windows_forward" = "向前切换当前应用窗口";
+"action.cycle_same_app_windows_backward" = "向后切换当前应用窗口";
 
 "alert.permission_required.title" = "需要辅助功能权限";
 "alert.permission_required.message" = "Sweeesh 需要辅助功能权限来读取和移动当前窗口。\n请打开“系统设置” > “隐私与安全性” > “辅助功能”，启用 Sweeesh，然后回到菜单中刷新权限状态。";
@@ -32,6 +33,8 @@
 "settings.language.simplified_chinese" = "简体中文";
 "settings.hotkeys.enabled" = "启用全局快捷键";
 "settings.dock_gestures.enabled" = "启用实验性 Dock 手势";
+"settings.dock_gestures.gesture.swipe_left" = "双指左滑";
+"settings.dock_gestures.gesture.swipe_right" = "双指右滑";
 "settings.dock_gestures.gesture.swipe_down" = "双指下滑";
 "settings.dock_gestures.gesture.swipe_up" = "双指上滑";
 "settings.dock_gestures.gesture.pinch_in" = "双指捏合";

@@ -1,6 +1,11 @@
 import AppKit
 import ApplicationServices
 
+enum WindowCycleDirection {
+    case forward
+    case backward
+}
+
 @MainActor
 protocol WindowManaging {
     func perform(_ action: WindowAction, layoutEngine: WindowLayoutEngine) throws
@@ -34,9 +39,23 @@ struct WindowManager: WindowManaging {
                 throw WindowManagerError.unableToPerformAction
             }
             return
-        case .cycleSameAppWindows:
+        case .cycleSameAppWindowsForward:
             let currentWindow = try focusedWindowElement(in: appElement)
-            try focusNextWindow(in: app, appElement: appElement, currentWindow: currentWindow)
+            try focusAdjacentVisibleWindow(
+                in: app,
+                appElement: appElement,
+                currentWindow: currentWindow,
+                direction: .forward
+            )
+            return
+        case .cycleSameAppWindowsBackward:
+            let currentWindow = try focusedWindowElement(in: appElement)
+            try focusAdjacentVisibleWindow(
+                in: app,
+                appElement: appElement,
+                currentWindow: currentWindow,
+                direction: .backward
+            )
             return
         case .leftHalf, .rightHalf, .maximize, .center:
             break
@@ -185,6 +204,31 @@ struct WindowManager: WindowManaging {
         }
 
         DebugLog.info(DebugLog.windows, "Terminated app for Dock target \(target.logDescription)")
+        return true
+    }
+
+    func cycleVisibleWindows(
+        of application: DockApplicationTarget,
+        direction: WindowCycleDirection
+    ) throws -> Bool {
+        guard AXIsProcessTrusted() else {
+            throw WindowManagerError.accessibilityPermissionMissing
+        }
+
+        DebugLog.info(
+            DebugLog.windows,
+            "Attempting to cycle visible windows \(direction == .forward ? "forward" : "backward") for \(application.logDescription)"
+        )
+
+        let app = try runningApplication(matching: application)
+        let appElement = AXUIElementCreateApplication(app.processIdentifier)
+
+        try focusAdjacentVisibleWindow(
+            in: app,
+            appElement: appElement,
+            currentWindow: preferredCycleReferenceWindow(in: appElement),
+            direction: direction
+        )
         return true
     }
 
@@ -452,6 +496,23 @@ struct WindowManager: WindowManaging {
         return unsafeDowncast(focusedWindow, to: AXUIElement.self)
     }
 
+    private func mainWindowElement(in appElement: AXUIElement) throws -> AXUIElement {
+        var mainWindowValue: CFTypeRef?
+        let error = AXUIElementCopyAttributeValue(
+            appElement,
+            kAXMainWindowAttribute as CFString,
+            &mainWindowValue
+        )
+
+        guard error == .success, let mainWindow = mainWindowValue else {
+            DebugLog.error(DebugLog.accessibility, "Failed to read main window; AX error = \(error.rawValue)")
+            throw WindowManagerError.noFocusedWindow
+        }
+
+        DebugLog.debug(DebugLog.windows, "Resolved main window: \(windowSummary([unsafeDowncast(mainWindow, to: AXUIElement.self)]))")
+        return unsafeDowncast(mainWindow, to: AXUIElement.self)
+    }
+
     private func frame(of window: AXUIElement) throws -> CGRect {
         let position = try pointAttribute(kAXPositionAttribute as CFString, from: window)
         let size = try sizeAttribute(kAXSizeAttribute as CFString, from: window)
@@ -544,22 +605,46 @@ struct WindowManager: WindowManaging {
         return true
     }
 
-    private func focusNextWindow(
+    private func focusAdjacentVisibleWindow(
         in app: NSRunningApplication,
         appElement: AXUIElement,
-        currentWindow: AXUIElement
+        currentWindow: AXUIElement?,
+        direction: WindowCycleDirection
     ) throws {
-        let windows = try windowElements(in: appElement).filter { !isMinimized($0) }
+        let windows = try visibleWindowElements(in: appElement)
 
         guard windows.count > 1 else {
             throw WindowManagerError.noAlternateWindow
         }
 
-        let currentIndex = windows.firstIndex(where: { CFEqual($0, currentWindow) }) ?? 0
-        let nextIndex = windows.index(after: currentIndex)
-        let targetWindow = nextIndex == windows.endIndex ? windows[windows.startIndex] : windows[nextIndex]
+        let referenceWindow = currentWindow.flatMap { currentWindow in
+            windows.first(where: { CFEqual($0, currentWindow) })
+        } ?? windows[windows.startIndex]
+        let currentIndex = windows.firstIndex(where: { CFEqual($0, referenceWindow) }) ?? 0
+        let targetIndex: Int
+
+        switch direction {
+        case .forward:
+            targetIndex = (currentIndex + 1) % windows.count
+        case .backward:
+            targetIndex = (currentIndex + windows.count - 1) % windows.count
+        }
+
+        let targetWindow = windows[targetIndex]
 
         try bringWindowToFront(targetWindow, for: app)
+    }
+
+    private func preferredCycleReferenceWindow(in appElement: AXUIElement) -> AXUIElement? {
+        if let focusedWindow = try? focusedWindowElement(in: appElement) {
+            return focusedWindow
+        }
+
+        if let mainWindow = try? mainWindowElement(in: appElement) {
+            return mainWindow
+        }
+
+        return nil
     }
 
     private func quitFrontmostApplication() throws {
@@ -702,6 +787,10 @@ struct WindowManager: WindowManaging {
         }
 
         return windows.map { unsafeDowncast($0, to: AXUIElement.self) }
+    }
+
+    private func visibleWindowElements(in appElement: AXUIElement) throws -> [AXUIElement] {
+        try windowElements(in: appElement).filter { !isMinimized($0) }
     }
 
     private func isMinimized(_ window: AXUIElement) -> Bool {

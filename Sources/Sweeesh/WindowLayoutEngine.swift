@@ -17,7 +17,11 @@ struct WindowLayoutEngine {
             return currentVisibleFrame.integral
         case .center:
             return centeredFrame(in: currentVisibleFrame)
-        case .minimize, .closeWindow, .quitApplication, .cycleSameAppWindows:
+        case .minimize,
+             .closeWindow,
+             .quitApplication,
+             .cycleSameAppWindowsForward,
+             .cycleSameAppWindowsBackward:
             return currentWindowFrame
         }
     }

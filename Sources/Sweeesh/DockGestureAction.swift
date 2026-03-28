@@ -1,6 +1,8 @@
 import Foundation
 
 enum DockGestureKind: String, CaseIterable, Codable, Hashable, Identifiable, Sendable {
+    case swipeLeft
+    case swipeRight
     case swipeDown
     case swipeUp
     case pinchIn
@@ -12,6 +14,18 @@ enum DockGestureKind: String, CaseIterable, Codable, Hashable, Identifiable, Sen
         preferredLanguages: [String] = Locale.preferredLanguages
     ) -> String {
         switch self {
+        case .swipeLeft:
+            return L10n.string(
+                "settings.dock_gestures.gesture.swipe_left",
+                localeIdentifier: localeIdentifier,
+                preferredLanguages: preferredLanguages
+            )
+        case .swipeRight:
+            return L10n.string(
+                "settings.dock_gestures.gesture.swipe_right",
+                localeIdentifier: localeIdentifier,
+                preferredLanguages: preferredLanguages
+            )
         case .swipeDown:
             return L10n.string(
                 "settings.dock_gestures.gesture.swipe_down",
@@ -37,6 +51,8 @@ enum DockGestureKind: String, CaseIterable, Codable, Hashable, Identifiable, Sen
 enum DockGestureAction: String, CaseIterable, Codable, Hashable, Identifiable, Sendable {
     case minimizeWindow
     case restoreWindow
+    case cycleWindowsForward
+    case cycleWindowsBackward
     case closeWindow
     case quitApplication
 
@@ -56,6 +72,18 @@ enum DockGestureAction: String, CaseIterable, Codable, Hashable, Identifiable, S
         case .restoreWindow:
             return L10n.string(
                 "action.restore_window",
+                localeIdentifier: localeIdentifier,
+                preferredLanguages: preferredLanguages
+            )
+        case .cycleWindowsForward:
+            return L10n.string(
+                "action.cycle_same_app_windows_forward",
+                localeIdentifier: localeIdentifier,
+                preferredLanguages: preferredLanguages
+            )
+        case .cycleWindowsBackward:
+            return L10n.string(
+                "action.cycle_same_app_windows_backward",
                 localeIdentifier: localeIdentifier,
                 preferredLanguages: preferredLanguages
             )
@@ -82,6 +110,8 @@ struct DockGestureBinding: Codable, Equatable, Hashable, Sendable {
 
 enum DockGestureBindings {
     static let defaults: [DockGestureBinding] = [
+        DockGestureBinding(gesture: .swipeLeft, action: .cycleWindowsForward),
+        DockGestureBinding(gesture: .swipeRight, action: .cycleWindowsBackward),
         DockGestureBinding(gesture: .swipeDown, action: .minimizeWindow),
         DockGestureBinding(gesture: .swipeUp, action: .restoreWindow),
         DockGestureBinding(gesture: .pinchIn, action: .quitApplication),
@@ -89,6 +119,10 @@ enum DockGestureBindings {
 
     static func fallbackAction(for gesture: DockGestureKind) -> DockGestureAction {
         switch gesture {
+        case .swipeLeft:
+            return .cycleWindowsForward
+        case .swipeRight:
+            return .cycleWindowsBackward
         case .swipeDown:
             return .minimizeWindow
         case .swipeUp:

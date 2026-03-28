@@ -1,14 +1,15 @@
 import Foundation
 
 enum WindowAction: Int, CaseIterable, Codable, Hashable, Sendable {
-    case leftHalf
-    case rightHalf
-    case maximize
-    case center
-    case minimize
-    case closeWindow
-    case quitApplication
-    case cycleSameAppWindows
+    case leftHalf = 0
+    case rightHalf = 1
+    case maximize = 2
+    case center = 3
+    case minimize = 4
+    case closeWindow = 5
+    case quitApplication = 6
+    case cycleSameAppWindowsForward = 7
+    case cycleSameAppWindowsBackward = 8
 
     var title: String {
         title()
@@ -61,9 +62,15 @@ enum WindowAction: Int, CaseIterable, Codable, Hashable, Sendable {
                 localeIdentifier: localeIdentifier,
                 preferredLanguages: preferredLanguages
             )
-        case .cycleSameAppWindows:
+        case .cycleSameAppWindowsForward:
             return L10n.string(
-                "action.cycle_same_app_windows",
+                "action.cycle_same_app_windows_forward",
+                localeIdentifier: localeIdentifier,
+                preferredLanguages: preferredLanguages
+            )
+        case .cycleSameAppWindowsBackward:
+            return L10n.string(
+                "action.cycle_same_app_windows_backward",
                 localeIdentifier: localeIdentifier,
                 preferredLanguages: preferredLanguages
             )
@@ -86,8 +93,10 @@ enum WindowAction: Int, CaseIterable, Codable, Hashable, Sendable {
             return "6"
         case .quitApplication:
             return "7"
-        case .cycleSameAppWindows:
+        case .cycleSameAppWindowsForward:
             return "8"
+        case .cycleSameAppWindowsBackward:
+            return "9"
         }
     }
 }

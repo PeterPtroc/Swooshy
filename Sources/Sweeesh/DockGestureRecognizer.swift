@@ -28,12 +28,18 @@ struct DockApplicationTarget: Equatable {
 }
 
 enum DockGestureEvent: Equatable {
+    case swipeLeft(application: DockApplicationTarget)
+    case swipeRight(application: DockApplicationTarget)
     case swipeDown(application: DockApplicationTarget)
     case swipeUp(application: DockApplicationTarget)
     case pinchIn(application: DockApplicationTarget)
 
     var gesture: DockGestureKind {
         switch self {
+        case .swipeLeft:
+            return .swipeLeft
+        case .swipeRight:
+            return .swipeRight
         case .swipeDown:
             return .swipeDown
         case .swipeUp:
@@ -45,7 +51,11 @@ enum DockGestureEvent: Equatable {
 
     var application: DockApplicationTarget {
         switch self {
-        case .swipeDown(let application), .swipeUp(let application), .pinchIn(let application):
+        case .swipeLeft(let application),
+             .swipeRight(let application),
+             .swipeDown(let application),
+             .swipeUp(let application),
+             .pinchIn(let application):
             return application
         }
     }
@@ -59,8 +69,8 @@ struct DockGestureRecognizer {
         var hasTriggered = false
     }
 
-    private let verticalThreshold: CGFloat = 0.09
-    private let verticalBiasRatio: CGFloat = 1.35
+    private let translationThreshold: CGFloat = 0.09
+    private let directionalBiasRatio: CGFloat = 1.35
     private let pinchThreshold: CGFloat = 0.08
     private let pinchBiasRatio: CGFloat = 1.15
     private var session: Session?
@@ -107,21 +117,34 @@ struct DockGestureRecognizer {
             return .pinchIn(application: session.application)
         }
 
-        guard abs(deltaY) >= verticalThreshold else {
+        if
+            abs(deltaY) >= translationThreshold,
+            abs(deltaY) >= abs(deltaX) * directionalBiasRatio
+        {
+            self.session?.hasTriggered = true
+
+            if deltaY < 0 {
+                return .swipeDown(application: session.application)
+            }
+
+            return .swipeUp(application: session.application)
+        }
+
+        guard abs(deltaX) >= translationThreshold else {
             return nil
         }
 
-        guard abs(deltaY) >= abs(deltaX) * verticalBiasRatio else {
+        guard abs(deltaX) >= abs(deltaY) * directionalBiasRatio else {
             return nil
         }
 
         self.session?.hasTriggered = true
 
-        if deltaY < 0 {
-            return .swipeDown(application: session.application)
+        if deltaX < 0 {
+            return .swipeLeft(application: session.application)
         }
 
-        return .swipeUp(application: session.application)
+        return .swipeRight(application: session.application)
     }
 
     private func averagePoint(for touches: [TrackpadTouchSample]) -> CGPoint {

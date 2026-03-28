@@ -411,7 +411,8 @@ enum HotKeyBindings {
         HotKeyBinding(action: .minimize, key: .m, modifiers: .commandOptionControl),
         HotKeyBinding(action: .closeWindow, key: .w, modifiers: .commandOptionControl),
         HotKeyBinding(action: .quitApplication, key: .q, modifiers: .commandOptionControl),
-        HotKeyBinding(action: .cycleSameAppWindows, key: .grave, modifiers: .commandOptionControl),
+        HotKeyBinding(action: .cycleSameAppWindowsForward, key: .grave, modifiers: .commandOptionControl),
+        HotKeyBinding(action: .cycleSameAppWindowsBackward, key: .grave, modifiers: .commandShiftOptionControl),
     ]
 
     static func binding(for action: WindowAction, in bindings: [HotKeyBinding] = defaults) -> HotKeyBinding? {

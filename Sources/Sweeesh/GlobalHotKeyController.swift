@@ -68,7 +68,8 @@ final class GlobalHotKeyController {
     }
 
     private func registerHotKeys() {
-        for binding in settingsStore.hotKeyBindings {
+        for action in WindowAction.allCases {
+            let binding = settingsStore.hotKeyBinding(for: action)
             var hotKeyRef: EventHotKeyRef?
             let hotKeyID = EventHotKeyID(
                 signature: hotKeySignature,

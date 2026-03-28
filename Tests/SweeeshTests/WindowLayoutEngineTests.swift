@@ -54,7 +54,13 @@ struct WindowLayoutEngineTests {
     func nonLayoutActionsPreserveCurrentFrame() {
         let currentWindowFrame = CGRect(x: 100, y: 100, width: 800, height: 600)
 
-        for action in [WindowAction.minimize, .closeWindow, .quitApplication, .cycleSameAppWindows] {
+        for action in [
+            WindowAction.minimize,
+            .closeWindow,
+            .quitApplication,
+            .cycleSameAppWindowsForward,
+            .cycleSameAppWindowsBackward,
+        ] {
             let frame = engine.targetFrame(
                 for: action,
                 currentWindowFrame: currentWindowFrame,

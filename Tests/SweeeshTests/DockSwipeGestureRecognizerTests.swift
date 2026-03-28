@@ -20,6 +20,76 @@ struct DockSwipeGestureRecognizerTests {
     }
 
     @Test
+    func leftwardTwoFingerSwipeCyclesHoveredApplicationForward() {
+        var recognizer = DockGestureRecognizer()
+        let finder = target(
+            dockItemName: "Finder",
+            processIdentifier: 100,
+            bundleIdentifier: "com.apple.finder",
+            aliases: ["Finder", "com.apple.finder"]
+        )
+
+        _ = recognizer.process(
+            frame: TrackpadTouchFrame(
+                touches: [
+                    TrackpadTouchSample(identifier: 1, position: CGPoint(x: 0.7, y: 0.5)),
+                    TrackpadTouchSample(identifier: 2, position: CGPoint(x: 0.85, y: 0.5)),
+                ],
+                timestamp: 0
+            ),
+            hoveredApplication: finder
+        )
+
+        #expect(
+            recognizer.process(
+                frame: TrackpadTouchFrame(
+                    touches: [
+                        TrackpadTouchSample(identifier: 1, position: CGPoint(x: 0.5, y: 0.51)),
+                        TrackpadTouchSample(identifier: 2, position: CGPoint(x: 0.65, y: 0.49)),
+                    ],
+                    timestamp: 0.1
+                ),
+                hoveredApplication: finder
+            ) == .swipeLeft(application: finder)
+        )
+    }
+
+    @Test
+    func rightwardTwoFingerSwipeCyclesHoveredApplicationBackward() {
+        var recognizer = DockGestureRecognizer()
+        let arc = target(
+            dockItemName: "Arc",
+            processIdentifier: 103,
+            bundleIdentifier: "company.thebrowser.Browser",
+            aliases: ["Arc", "company.thebrowser.Browser"]
+        )
+
+        _ = recognizer.process(
+            frame: TrackpadTouchFrame(
+                touches: [
+                    TrackpadTouchSample(identifier: 1, position: CGPoint(x: 0.2, y: 0.45)),
+                    TrackpadTouchSample(identifier: 2, position: CGPoint(x: 0.35, y: 0.45)),
+                ],
+                timestamp: 0
+            ),
+            hoveredApplication: arc
+        )
+
+        #expect(
+            recognizer.process(
+                frame: TrackpadTouchFrame(
+                    touches: [
+                        TrackpadTouchSample(identifier: 1, position: CGPoint(x: 0.37, y: 0.44)),
+                        TrackpadTouchSample(identifier: 2, position: CGPoint(x: 0.52, y: 0.46)),
+                    ],
+                    timestamp: 0.1
+                ),
+                hoveredApplication: arc
+            ) == .swipeRight(application: arc)
+        )
+    }
+
+    @Test
     func downwardTwoFingerSwipeMinimizesHoveredApplication() {
         var recognizer = DockGestureRecognizer()
         let finder = target(
@@ -140,6 +210,36 @@ struct DockSwipeGestureRecognizerTests {
                     timestamp: 0
                 ),
                 hoveredApplication: nil
+            ) == nil
+        )
+    }
+
+    @Test
+    func horizontalSwipeRequiresHorizontalBias() {
+        var recognizer = DockGestureRecognizer()
+        let finder = target(dockItemName: "Finder")
+
+        _ = recognizer.process(
+            frame: TrackpadTouchFrame(
+                touches: [
+                    TrackpadTouchSample(identifier: 1, position: CGPoint(x: 0.4, y: 0.4)),
+                    TrackpadTouchSample(identifier: 2, position: CGPoint(x: 0.6, y: 0.4)),
+                ],
+                timestamp: 0
+            ),
+            hoveredApplication: finder
+        )
+
+        #expect(
+            recognizer.process(
+                frame: TrackpadTouchFrame(
+                    touches: [
+                        TrackpadTouchSample(identifier: 1, position: CGPoint(x: 0.52, y: 0.55)),
+                        TrackpadTouchSample(identifier: 2, position: CGPoint(x: 0.72, y: 0.53)),
+                    ],
+                    timestamp: 0.1
+                ),
+                hoveredApplication: finder
             ) == nil
         )
     }
