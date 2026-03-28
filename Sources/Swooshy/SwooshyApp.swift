@@ -1,7 +1,7 @@
 import AppKit
 
 @main
-struct SweeeshApp {
+struct SwooshyApp {
     @MainActor
     static func main() {
         let application = NSApplication.shared

@@ -9,7 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let settingsStore = SettingsStore()
-        DebugLog.info(DebugLog.app, "Sweeesh launch sequence started")
+        DebugLog.info(DebugLog.app, "Swooshy launch sequence started")
         DebugLog.info(DebugLog.app, "Debug log file path: \(DebugLog.logFilePathDescription)")
         let permissionManager = AccessibilityPermissionManager()
         let windowManager = WindowManager()
@@ -43,6 +43,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             settingsStore: settingsStore
         )
 
-        DebugLog.info(DebugLog.app, "Sweeesh launch sequence completed")
+        DebugLog.info(DebugLog.app, "Swooshy launch sequence completed")
     }
 }

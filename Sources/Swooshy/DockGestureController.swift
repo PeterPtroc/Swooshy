@@ -653,7 +653,7 @@ private final class MultitouchInputMonitor: @unchecked Sendable {
     var onFrame: ((TrackpadTouchFrame) -> Void)?
 
     private var isMonitoring = false
-    private let deliveryStateQueue = DispatchQueue(label: "Sweeesh.MultitouchInputMonitor.delivery")
+    private let deliveryStateQueue = DispatchQueue(label: "Swooshy.MultitouchInputMonitor.delivery")
     private var latestFrame: TrackpadTouchFrame?
     private var isFrameDeliveryScheduled = false
 
@@ -661,7 +661,7 @@ private final class MultitouchInputMonitor: @unchecked Sendable {
         guard isMonitoring == false else { return }
 
         let context = Unmanaged.passUnretained(self).toOpaque()
-        isMonitoring = SweeeshMTStartMonitoring(multitouchCallback, context)
+        isMonitoring = SwooshyMTStartMonitoring(multitouchCallback, context)
         if isMonitoring == false {
             DebugLog.error(DebugLog.dock, "MultitouchSupport monitoring unavailable")
         } else {
@@ -671,7 +671,7 @@ private final class MultitouchInputMonitor: @unchecked Sendable {
 
     func stop() {
         guard isMonitoring else { return }
-        SweeeshMTStopMonitoring()
+        SwooshyMTStopMonitoring()
         isMonitoring = false
         deliveryStateQueue.sync {
             latestFrame = nil
@@ -681,7 +681,7 @@ private final class MultitouchInputMonitor: @unchecked Sendable {
     }
 
     fileprivate func receive(
-        fingers: UnsafePointer<SweeeshMTFinger>,
+        fingers: UnsafePointer<SwooshyMTFinger>,
         fingerCount: Int,
         timestamp: Double
     ) {
@@ -756,7 +756,7 @@ private final class MultitouchInputMonitor: @unchecked Sendable {
 
 private func multitouchCallback(
     _ device: Int32,
-    _ data: UnsafePointer<SweeeshMTFinger>?,
+    _ data: UnsafePointer<SwooshyMTFinger>?,
     _ fingerCount: Int32,
     _ timestamp: Double,
     _ frame: Int32,

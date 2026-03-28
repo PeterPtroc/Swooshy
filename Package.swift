@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "Sweeesh",
+    name: "Swooshy",
     defaultLocalization: "en",
     platforms: [
         .macOS(.v14),
@@ -16,15 +16,15 @@ let package = Package(
             publicHeadersPath: "include"
         ),
         .executableTarget(
-            name: "Sweeesh",
+            name: "Swooshy",
             dependencies: ["CMultitouchShim"],
             resources: [
                 .process("Resources"),
             ]
         ),
         .testTarget(
-            name: "SweeeshTests",
-            dependencies: ["Sweeesh"]
+            name: "SwooshyTests",
+            dependencies: ["Swooshy"]
         ),
     ],
     swiftLanguageModes: [.v6]

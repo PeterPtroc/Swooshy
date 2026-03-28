@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 extension Notification.Name {
-    static let settingsDidChange = Notification.Name("Sweeesh.settingsDidChange")
+    static let settingsDidChange = Notification.Name("Swooshy.settingsDidChange")
 }
 
 @MainActor

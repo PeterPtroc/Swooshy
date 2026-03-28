@@ -6,12 +6,12 @@
 typedef struct {
     float x;
     float y;
-} SweeeshMTPoint;
+} SwooshyMTPoint;
 
 typedef struct {
-    SweeeshMTPoint position;
-    SweeeshMTPoint velocity;
-} SweeeshMTVector;
+    SwooshyMTPoint position;
+    SwooshyMTPoint velocity;
+} SwooshyMTVector;
 
 typedef struct {
     int frame;
@@ -20,28 +20,28 @@ typedef struct {
     int state;
     int unknown1;
     int unknown2;
-    SweeeshMTVector normalized;
+    SwooshyMTVector normalized;
     float size;
     int unknown3;
     float angle;
     float majorAxis;
     float minorAxis;
-    SweeeshMTVector millimeters;
+    SwooshyMTVector millimeters;
     int unknown5_1;
     int unknown5_2;
     float unknown6;
-} SweeeshMTFinger;
+} SwooshyMTFinger;
 
-typedef void (*SweeeshMTContactCallback)(
+typedef void (*SwooshyMTContactCallback)(
     int device,
-    const SweeeshMTFinger *data,
+    const SwooshyMTFinger *data,
     int fingerCount,
     double timestamp,
     int frame,
     void *context
 );
 
-bool SweeeshMTStartMonitoring(SweeeshMTContactCallback callback, void *context);
-void SweeeshMTStopMonitoring(void);
+bool SwooshyMTStartMonitoring(SwooshyMTContactCallback callback, void *context);
+void SwooshyMTStopMonitoring(void);
 
 #endif

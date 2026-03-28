@@ -40,7 +40,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
         button.image = NSImage(
             systemSymbolName: "rectangle.3.group",
-            accessibilityDescription: "Sweeesh"
+            accessibilityDescription: "Swooshy"
         )
         button.imagePosition = .imageOnly
 

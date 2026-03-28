@@ -1,10 +1,10 @@
-"menu.app_name" = "Sweeesh";
+"menu.app_name" = "Swooshy";
 "menu.permission.ready" = "辅助功能权限已就绪";
 "menu.permission.grant" = "授予辅助功能权限";
 "menu.permission.refresh" = "刷新权限状态";
 "menu.settings" = "设置…";
 "menu.help" = "使用说明";
-"menu.quit" = "退出 Sweeesh";
+"menu.quit" = "退出 Swooshy";
 
 "action.left_half" = "贴靠到左半屏";
 "action.right_half" = "贴靠到右半屏";
@@ -18,9 +18,9 @@
 "action.cycle_same_app_windows_backward" = "向后切换当前应用窗口";
 
 "alert.permission_required.title" = "需要辅助功能权限";
-"alert.permission_required.message" = "Sweeesh 需要辅助功能权限来读取和移动当前窗口。\n请打开“系统设置” > “隐私与安全性” > “辅助功能”，启用 Sweeesh，然后回到菜单中刷新权限状态。";
+"alert.permission_required.message" = "Swooshy 需要辅助功能权限来读取和移动当前窗口。\n请打开“系统设置” > “隐私与安全性” > “辅助功能”，启用 Swooshy，然后回到菜单中刷新权限状态。";
 "alert.window_action_failed.title" = "无法执行操作";
-"alert.about.title" = "Sweeesh v1";
+"alert.about.title" = "Swooshy v1";
 "alert.about.message" = "这是第一版聚焦于菜单栏的 MVP：\n- 通过辅助功能接口读取当前前台窗口。\n- 执行贴靠、移动和调整大小布局。\n- 原生触控板手势能力会在窗口引擎稳定后再引入。";
 
 "settings.window.title" = "设置";
@@ -43,7 +43,7 @@
 "settings.shortcuts.recorder_placeholder" = "请按快捷键";
 "settings.shortcuts.reset" = "恢复默认快捷键";
 
-"error.permission_missing" = "缺少辅助功能权限。请在系统设置中启用 Sweeesh 后重试。";
+"error.permission_missing" = "缺少辅助功能权限。请在系统设置中启用 Swooshy 后重试。";
 "error.no_frontmost_app" = "无法找到当前前台应用。";
 "error.no_focused_window" = "当前前台应用没有暴露可操作的聚焦窗口。";
 "error.read_window_frame_failed" = "无法读取当前窗口的位置和大小。";

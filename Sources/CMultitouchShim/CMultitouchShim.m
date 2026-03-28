@@ -5,27 +5,27 @@
 
 typedef void *MTDeviceRef;
 typedef CFMutableArrayRef (*MTDeviceCreateListFunction)(void);
-typedef void (*MTRegisterContactFrameCallbackFunction)(MTDeviceRef, int (*)(int, const SweeeshMTFinger *, int, double, int));
+typedef void (*MTRegisterContactFrameCallbackFunction)(MTDeviceRef, int (*)(int, const SwooshyMTFinger *, int, double, int));
 typedef void (*MTDeviceStartFunction)(MTDeviceRef, int);
 typedef void (*MTDeviceStopFunction)(MTDeviceRef);
 
 static void *sLibraryHandle = NULL;
 static CFMutableArrayRef sDevices = NULL;
-static SweeeshMTContactCallback sClientCallback = NULL;
+static SwooshyMTContactCallback sClientCallback = NULL;
 static void *sClientContext = NULL;
 static MTDeviceCreateListFunction sMTDeviceCreateList = NULL;
 static MTRegisterContactFrameCallbackFunction sMTRegisterContactFrameCallback = NULL;
 static MTDeviceStartFunction sMTDeviceStart = NULL;
 static MTDeviceStopFunction sMTDeviceStop = NULL;
 
-static int sweeesh_mt_callback(int device, const SweeeshMTFinger *data, int fingerCount, double timestamp, int frame) {
+static int swooshy_mt_callback(int device, const SwooshyMTFinger *data, int fingerCount, double timestamp, int frame) {
     if (sClientCallback != NULL) {
         sClientCallback(device, data, fingerCount, timestamp, frame, sClientContext);
     }
     return 0;
 }
 
-static bool SweeeshMTLoadSymbols(void) {
+static bool SwooshyMTLoadSymbols(void) {
     if (sLibraryHandle != NULL) {
         return true;
     }
@@ -46,12 +46,12 @@ static bool SweeeshMTLoadSymbols(void) {
            sMTDeviceStop != NULL;
 }
 
-bool SweeeshMTStartMonitoring(SweeeshMTContactCallback callback, void *context) {
-    if (!SweeeshMTLoadSymbols()) {
+bool SwooshyMTStartMonitoring(SwooshyMTContactCallback callback, void *context) {
+    if (!SwooshyMTLoadSymbols()) {
         return false;
     }
 
-    SweeeshMTStopMonitoring();
+    SwooshyMTStopMonitoring();
 
     sClientCallback = callback;
     sClientContext = context;
@@ -64,14 +64,14 @@ bool SweeeshMTStartMonitoring(SweeeshMTContactCallback callback, void *context) 
     CFIndex count = CFArrayGetCount(sDevices);
     for (CFIndex index = 0; index < count; index++) {
         MTDeviceRef device = (MTDeviceRef)CFArrayGetValueAtIndex(sDevices, index);
-        sMTRegisterContactFrameCallback(device, sweeesh_mt_callback);
+        sMTRegisterContactFrameCallback(device, swooshy_mt_callback);
         sMTDeviceStart(device, 0);
     }
 
     return count > 0;
 }
 
-void SweeeshMTStopMonitoring(void) {
+void SwooshyMTStopMonitoring(void) {
     if (sDevices != NULL && sMTDeviceStop != NULL) {
         CFIndex count = CFArrayGetCount(sDevices);
         for (CFIndex index = 0; index < count; index++) {

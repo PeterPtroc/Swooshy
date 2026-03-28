@@ -1,6 +1,6 @@
 import Carbon.HIToolbox
 import Testing
-@testable import Sweeesh
+@testable import Swooshy
 
 struct HotKeyBindingsTests {
     @Test

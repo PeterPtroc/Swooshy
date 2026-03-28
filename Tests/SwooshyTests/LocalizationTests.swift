@@ -1,5 +1,5 @@
 import Testing
-@testable import Sweeesh
+@testable import Swooshy
 
 struct LocalizationTests {
     @Test

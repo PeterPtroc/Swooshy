@@ -1,10 +1,10 @@
-"menu.app_name" = "Sweeesh";
+"menu.app_name" = "Swooshy";
 "menu.permission.ready" = "Accessibility Access Ready";
 "menu.permission.grant" = "Grant Accessibility Access";
 "menu.permission.refresh" = "Refresh Permission State";
 "menu.settings" = "Settings…";
 "menu.help" = "How This Works";
-"menu.quit" = "Quit Sweeesh";
+"menu.quit" = "Quit Swooshy";
 
 "action.left_half" = "Snap Left Half";
 "action.right_half" = "Snap Right Half";
@@ -18,9 +18,9 @@
 "action.cycle_same_app_windows_backward" = "Cycle Same-App Windows Backward";
 
 "alert.permission_required.title" = "Accessibility Permission Required";
-"alert.permission_required.message" = "Sweeesh needs Accessibility permission to read and move the focused window.\nOpen System Settings > Privacy & Security > Accessibility, enable Sweeesh, then refresh this menu.";
+"alert.permission_required.message" = "Swooshy needs Accessibility permission to read and move the focused window.\nOpen System Settings > Privacy & Security > Accessibility, enable Swooshy, then refresh this menu.";
 "alert.window_action_failed.title" = "Unable to Execute Action";
-"alert.about.title" = "Sweeesh v1";
+"alert.about.title" = "Swooshy v1";
 "alert.about.message" = "This first version is a focused menubar MVP:\n- It reads the frontmost window through Accessibility.\n- It applies snap and move layouts.\n- Trackpad-native gestures are intentionally deferred until the window engine is stable.";
 
 "settings.window.title" = "Settings";
@@ -43,7 +43,7 @@
 "settings.shortcuts.recorder_placeholder" = "Press shortcut";
 "settings.shortcuts.reset" = "Reset shortcut defaults";
 
-"error.permission_missing" = "Accessibility permission is missing. Enable Sweeesh in System Settings and try again.";
+"error.permission_missing" = "Accessibility permission is missing. Enable Swooshy in System Settings and try again.";
 "error.no_frontmost_app" = "Unable to find the frontmost application.";
 "error.no_focused_window" = "The frontmost application does not expose a focused window.";
 "error.read_window_frame_failed" = "Unable to read the current window frame.";

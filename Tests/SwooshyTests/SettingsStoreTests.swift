@@ -1,12 +1,12 @@
 import Foundation
 import Testing
-@testable import Sweeesh
+@testable import Swooshy
 
 @MainActor
 struct SettingsStoreTests {
     @Test
     func persistsLanguageAndHotKeyPreferences() {
-        let suiteName = "Sweeesh.SettingsStoreTests.\(UUID().uuidString)"
+        let suiteName = "Swooshy.SettingsStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
 
@@ -26,7 +26,7 @@ struct SettingsStoreTests {
 
     @Test
     func persistsCustomHotKeyBinding() {
-        let suiteName = "Sweeesh.SettingsStoreTests.\(UUID().uuidString)"
+        let suiteName = "Swooshy.SettingsStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
 
@@ -43,7 +43,7 @@ struct SettingsStoreTests {
 
     @Test
     func swapsConflictingBindingsToKeepShortcutsUnique() {
-        let suiteName = "Sweeesh.SettingsStoreTests.\(UUID().uuidString)"
+        let suiteName = "Swooshy.SettingsStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
 
@@ -65,7 +65,7 @@ struct SettingsStoreTests {
 
     @Test
     func systemLanguageUsesCurrentPreferredLanguages() {
-        let suiteName = "Sweeesh.SettingsStoreTests.\(UUID().uuidString)"
+        let suiteName = "Swooshy.SettingsStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
 
@@ -75,7 +75,7 @@ struct SettingsStoreTests {
 
     @Test
     func pinchGestureUsesQuitApplicationByDefault() {
-        let suiteName = "Sweeesh.SettingsStoreTests.\(UUID().uuidString)"
+        let suiteName = "Swooshy.SettingsStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
 
@@ -85,7 +85,7 @@ struct SettingsStoreTests {
 
     @Test
     func horizontalDockGesturesUseWindowCyclingByDefault() {
-        let suiteName = "Sweeesh.SettingsStoreTests.\(UUID().uuidString)"
+        let suiteName = "Swooshy.SettingsStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
 
@@ -96,7 +96,7 @@ struct SettingsStoreTests {
 
     @Test
     func backwardWindowCyclingHotkeyHasDefaultBinding() {
-        let suiteName = "Sweeesh.SettingsStoreTests.\(UUID().uuidString)"
+        let suiteName = "Swooshy.SettingsStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
 

@@ -1,6 +1,6 @@
 import CoreGraphics
 import Testing
-@testable import Sweeesh
+@testable import Swooshy
 
 struct WindowLayoutEngineTests {
     private let engine = WindowLayoutEngine()

@@ -3,7 +3,7 @@
 Last updated: 2026-03-28
 
 This note captures what we know about building a Swish-like interaction layer
-for Sweeesh without App Store constraints.
+for Swooshy without App Store constraints.
 
 ## Bottom Line
 

@@ -1,5 +1,5 @@
 import Testing
-@testable import Sweeesh
+@testable import Swooshy
 
 struct StatusMenuContentBuilderTests {
     private let builder = StatusMenuContentBuilder()
@@ -11,7 +11,7 @@ struct StatusMenuContentBuilderTests {
             preferredLanguages: ["zh-Hans-CN"]
         )
 
-        #expect(entries[0].title == "Sweeesh")
+        #expect(entries[0].title == "Swooshy")
         #expect(entries[1].title == "授予辅助功能权限")
         #expect(entries[2].title == "刷新权限状态")
         #expect(entries[4].title == "贴靠到左半屏")
@@ -19,7 +19,7 @@ struct StatusMenuContentBuilderTests {
         #expect(entries[12].title == "向后切换当前应用窗口")
         #expect(entries[14].title == "设置…")
         #expect(entries[16].title == "使用说明")
-        #expect(entries[17].title == "退出 Sweeesh")
+        #expect(entries[17].title == "退出 Swooshy")
     }
 
     @Test

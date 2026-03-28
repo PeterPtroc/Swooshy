@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 import Testing
-@testable import Sweeesh
+@testable import Swooshy
 
 struct WindowOrderingTests {
     private struct TestWindow: Equatable {

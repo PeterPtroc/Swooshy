@@ -1,6 +1,6 @@
-# Sweeesh
+# Swooshy
 
-Sweeesh is an experimental open-source macOS window utility aimed at becoming
+Swooshy is an experimental open-source macOS window utility aimed at becoming
 an open alternative to touchpad-first window tools. The first version focuses
 on the reliable part of the stack: a menubar app that uses Accessibility APIs
 to move and resize the focused window.
@@ -33,7 +33,7 @@ core behavior is stable and useful.
 
 ## Running the App
 
-1. Open `Package.swift` in Xcode and run the `Sweeesh` executable target.
+1. Open `Package.swift` in Xcode and run the `Swooshy` executable target.
 2. Or run `swift run` from the project root.
 3. Grant Accessibility access when prompted.
 4. Use the menu bar icon to trigger window actions.
@@ -54,8 +54,8 @@ core behavior is stable and useful.
 ## Debug Logging
 
 - Debug builds can enable detailed logs from `Settings… > Enable debug logging`
-- You can also force logs on at launch with `SWEEESH_DEBUG_LOGS=1 swift run`
-- When enabled, logs are also persisted to `~/Library/Logs/Sweeesh/debug.log`
+- You can also force logs on at launch with `SWOOSHY_DEBUG_LOGS=1 swift run`
+- When enabled, logs are also persisted to `~/Library/Logs/Swooshy/debug.log`
 - Release builds keep these verbose logs compiled out for a lighter runtime path
 
 ## Default Hotkeys
@@ -71,15 +71,15 @@ core behavior is stable and useful.
 
 ## Project Structure
 
-- `Sources/Sweeesh/SweeeshApp.swift`: App entry point
-- `Sources/Sweeesh/AppDelegate.swift`: lifecycle bootstrap
-- `Sources/Sweeesh/StatusBarController.swift`: menu bar UI and action wiring
-- `Sources/Sweeesh/SettingsStore.swift`: persisted app settings
-- `Sources/Sweeesh/SettingsWindowController.swift`: SwiftUI-backed settings window
-- `Sources/Sweeesh/Localization.swift`: localized string lookup
-- `Sources/Sweeesh/Resources/*.lproj`: language resources
-- `Sources/Sweeesh/WindowManager.swift`: Accessibility-based focused-window IO
-- `Sources/Sweeesh/WindowLayoutEngine.swift`: pure layout calculations
+- `Sources/Swooshy/SwooshyApp.swift`: App entry point
+- `Sources/Swooshy/AppDelegate.swift`: lifecycle bootstrap
+- `Sources/Swooshy/StatusBarController.swift`: menu bar UI and action wiring
+- `Sources/Swooshy/SettingsStore.swift`: persisted app settings
+- `Sources/Swooshy/SettingsWindowController.swift`: SwiftUI-backed settings window
+- `Sources/Swooshy/Localization.swift`: localized string lookup
+- `Sources/Swooshy/Resources/*.lproj`: language resources
+- `Sources/Swooshy/WindowManager.swift`: Accessibility-based focused-window IO
+- `Sources/Swooshy/WindowLayoutEngine.swift`: pure layout calculations
 - `ATTRIBUTION.md`: tracked reference projects and license discipline
 
 ## Roadmap

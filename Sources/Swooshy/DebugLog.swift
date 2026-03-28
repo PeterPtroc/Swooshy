@@ -2,7 +2,7 @@ import Foundation
 import OSLog
 
 enum DebugLog {
-    private static let subsystem = Bundle.main.bundleIdentifier ?? "Sweeesh"
+    private static let subsystem = Bundle.main.bundleIdentifier ?? "Swooshy"
 
     struct Channel {
         let name: String
@@ -45,7 +45,7 @@ enum DebugLog {
     }
 
     static var isEnabled: Bool {
-        if ProcessInfo.processInfo.environment["SWEEESH_DEBUG_LOGS"] == "1" {
+        if ProcessInfo.processInfo.environment["SWOOSHY_DEBUG_LOGS"] == "1" {
             return true
         }
 
@@ -75,7 +75,7 @@ private actor DebugLogFileSink {
     init() {
         let logsDirectory = FileManager.default
             .homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Logs/Sweeesh", isDirectory: true)
+            .appendingPathComponent("Library/Logs/Swooshy", isDirectory: true)
         self.logFileURL = logsDirectory.appendingPathComponent("debug.log")
     }
 
@@ -90,7 +90,7 @@ private actor DebugLogFileSink {
             try handle.seekToEnd()
             try handle.write(contentsOf: Data(line.utf8))
         } catch {
-            NSLog("Sweeesh debug log file write failed: %@", error.localizedDescription)
+            NSLog("Swooshy debug log file write failed: %@", error.localizedDescription)
         }
     }
 
