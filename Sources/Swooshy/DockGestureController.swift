@@ -132,6 +132,7 @@ final class DockGestureController {
             let action = settingsStore.dockGestureAction(for: event.gesture)
             let application = event.application
             gestureFeedbackPresenter.show(
+                gesture: event.gesture,
                 gestureTitle: event.gesture.title(preferredLanguages: settingsStore.preferredLanguages),
                 actionTitle: action.title(preferredLanguages: settingsStore.preferredLanguages),
                 anchor: NSEvent.mouseLocation
@@ -183,6 +184,7 @@ final class DockGestureController {
         do {
             let mouseLocation = NSEvent.mouseLocation
             gestureFeedbackPresenter.show(
+                gesture: event.gesture,
                 gestureTitle: event.gesture.title(preferredLanguages: settingsStore.preferredLanguages),
                 actionTitle: action.title(preferredLanguages: settingsStore.preferredLanguages),
                 anchor: mouseLocation

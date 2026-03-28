@@ -100,10 +100,19 @@ private struct SettingsView: View {
                     settingsStore.localized("settings.title_bar_gestures.enabled"),
                     isOn: $settingsStore.titleBarGesturesEnabled
                 )
+                Picker(
+                    settingsStore.localized("settings.gesture_hud.style.label"),
+                    selection: $settingsStore.gestureHUDStyle
+                ) {
+                    ForEach(GestureHUDStyle.allCases) { style in
+                        Text(style.title(preferredLanguages: settingsStore.preferredLanguages)).tag(style)
+                    }
+                }
+                .pickerStyle(.menu)
             } header: {
                 Text(settingsStore.localized("settings.section.gestures"))
             } footer: {
-                Text(settingsStore.localized("settings.gestures.footer"))
+                Text(settingsStore.localized("settings.gesture_hud.footer"))
             }
 
             Section {

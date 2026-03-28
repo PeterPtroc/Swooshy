@@ -45,6 +45,15 @@ final class SettingsStore {
         }
     }
 
+    var gestureHUDStyle: GestureHUDStyle {
+        didSet {
+            guard oldValue != gestureHUDStyle else { return }
+            userDefaults.set(gestureHUDStyle.rawValue, forKey: Keys.gestureHUDStyle)
+            DebugLog.info(DebugLog.settings, "Gesture HUD style set to \(gestureHUDStyle.rawValue)")
+            notifyDidChange()
+        }
+    }
+
     #if DEBUG
     var debugLoggingEnabled: Bool {
         didSet {
@@ -107,6 +116,9 @@ final class SettingsStore {
         } else {
             self.titleBarGesturesEnabled = userDefaults.bool(forKey: Keys.titleBarGesturesEnabled)
         }
+        self.gestureHUDStyle = GestureHUDStyle(
+            rawValue: userDefaults.string(forKey: Keys.gestureHUDStyle) ?? ""
+        ) ?? .classic
         #if DEBUG
         if userDefaults.object(forKey: Keys.debugLoggingEnabled) == nil {
             self.debugLoggingEnabled = false
@@ -352,6 +364,7 @@ final class SettingsStore {
         static let hotKeysEnabled = "settings.hotKeysEnabled"
         static let dockGesturesEnabled = "settings.dockGesturesEnabled"
         static let titleBarGesturesEnabled = "settings.titleBarGesturesEnabled"
+        static let gestureHUDStyle = "settings.gestureHUDStyle"
         #if DEBUG
         static let debugLoggingEnabled = "settings.debugLoggingEnabled"
         #endif
