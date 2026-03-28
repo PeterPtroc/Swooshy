@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             layoutEngine: layoutEngine
         )
         let alertPresenter = AppAlertPresenter()
+        let gestureFeedbackPresenter = GestureFeedbackController()
         let settingsWindowController = SettingsWindowController(settingsStore: settingsStore)
 
         self.settingsWindowController = settingsWindowController
@@ -41,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             windowManager: windowManager,
             layoutEngine: layoutEngine,
             alertPresenter: alertPresenter,
+            gestureFeedbackPresenter: gestureFeedbackPresenter,
             settingsStore: settingsStore
         )
 

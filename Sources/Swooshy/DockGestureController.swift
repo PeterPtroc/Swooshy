@@ -8,6 +8,7 @@ final class DockGestureController {
     private let windowManager: WindowManager
     private let layoutEngine: WindowLayoutEngine
     private let alertPresenter: AlertPresenting
+    private let gestureFeedbackPresenter: GestureFeedbackPresenting
     private let settingsStore: SettingsStore
     private let dockProbe = DockAccessibilityProbe()
     private let titleBarProbe = TitleBarAccessibilityProbe()
@@ -24,11 +25,13 @@ final class DockGestureController {
         windowManager: WindowManager,
         layoutEngine: WindowLayoutEngine,
         alertPresenter: AlertPresenting,
+        gestureFeedbackPresenter: GestureFeedbackPresenting,
         settingsStore: SettingsStore
     ) {
         self.windowManager = windowManager
         self.layoutEngine = layoutEngine
         self.alertPresenter = alertPresenter
+        self.gestureFeedbackPresenter = gestureFeedbackPresenter
         self.settingsStore = settingsStore
 
         monitor.onFrame = { [weak self] frame in
@@ -128,6 +131,11 @@ final class DockGestureController {
         do {
             let action = settingsStore.dockGestureAction(for: event.gesture)
             let application = event.application
+            gestureFeedbackPresenter.show(
+                gestureTitle: event.gesture.title(preferredLanguages: settingsStore.preferredLanguages),
+                actionTitle: action.title(preferredLanguages: settingsStore.preferredLanguages),
+                anchor: NSEvent.mouseLocation
+            )
             DebugLog.info(
                 DebugLog.dock,
                 "Dock gesture \(event.gesture.rawValue) mapped to \(action.rawValue) for \(application.logDescription)"
@@ -174,6 +182,11 @@ final class DockGestureController {
 
         do {
             let mouseLocation = NSEvent.mouseLocation
+            gestureFeedbackPresenter.show(
+                gestureTitle: event.gesture.title(preferredLanguages: settingsStore.preferredLanguages),
+                actionTitle: action.title(preferredLanguages: settingsStore.preferredLanguages),
+                anchor: mouseLocation
+            )
             DebugLog.info(
                 DebugLog.dock,
                 "Title-bar gesture \(event.gesture.rawValue) mapped to \(String(describing: action)) for \(event.application.logDescription)"
