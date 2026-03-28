@@ -13,6 +13,9 @@ final class DockGestureController {
     private var recognizer = DockSwipeGestureRecognizer()
     private var hasShownPermissionHint = false
     private var settingsObserver: NSObjectProtocol?
+    private var lastFrameLogAt = Date.distantPast
+    private var lastLoggedTouchCount = -1
+    private var lastLoggedHover: String?
 
     init(
         windowManager: WindowManager,
@@ -63,10 +66,12 @@ final class DockGestureController {
             .map { "#\($0.identifier)=\(NSStringFromPoint($0.position))" }
             .joined(separator: ", ")
         let hoveredApplication = dockProbe.hoveredApplicationName(at: mouseLocation)
-        DebugLog.debug(
-            DebugLog.dock,
-            "Received touch frame with \(frame.touches.count) touches at mouse \(NSStringFromPoint(mouseLocation)); hovered application = \(hoveredApplication ?? "nil"); touches = [\(touchSummary)]"
-        )
+        if shouldLogFrame(touchCount: frame.touches.count, hoveredApplication: hoveredApplication) {
+            DebugLog.debug(
+                DebugLog.dock,
+                "Received touch frame with \(frame.touches.count) touches at mouse \(NSStringFromPoint(mouseLocation)); hovered application = \(hoveredApplication ?? "nil"); touches = [\(touchSummary)]"
+            )
+        }
         guard let event = recognizer.process(frame: frame, hoveredApplicationName: hoveredApplication) else {
             return
         }
@@ -88,6 +93,21 @@ final class DockGestureController {
         }
     }
 
+    private func shouldLogFrame(touchCount: Int, hoveredApplication: String?) -> Bool {
+        let now = Date()
+        let shouldLog = touchCount != lastLoggedTouchCount ||
+            hoveredApplication != lastLoggedHover ||
+            now.timeIntervalSince(lastFrameLogAt) >= 0.25
+
+        if shouldLog {
+            lastFrameLogAt = now
+            lastLoggedTouchCount = touchCount
+            lastLoggedHover = hoveredApplication
+        }
+
+        return shouldLog
+    }
+
     private func handleWindowManagerError(_ error: WindowManagerError) {
         switch error {
         case .accessibilityPermissionMissing:
@@ -104,11 +124,57 @@ final class DockGestureController {
     }
 }
 
-private struct DockAccessibilityProbe {
+@MainActor
+private final class DockAccessibilityProbe {
+    private let cacheTTL: TimeInterval = 0.25
+    private let logTTL: TimeInterval = 0.4
+    private var cachedCandidates: [DockItemCandidate] = []
+    private var cacheExpiresAt = Date.distantPast
+    private var lastProbeLogAt = Date.distantPast
+    private var lastProbeLogKey = ""
+
     func hoveredApplicationName(at appKitPoint: CGPoint) -> String? {
-        guard AXIsProcessTrusted() else { return nil }
+        let candidates = dockCandidates().map { candidate in
+            var candidate = candidate
+            candidate.distance = distanceFromPoint(appKitPoint, to: candidate.frame)
+            return candidate
+        }
+
+        for candidate in candidates {
+            if candidate.frame.contains(appKitPoint) {
+                logProbeIfNeeded(
+                    key: "hit:\(candidate.name):\(NSStringFromPoint(appKitPoint))",
+                    message: "Pointer hit Dock item \(candidate.name) mapped to app \(candidate.matchedApplicationName) at \(NSStringFromPoint(appKitPoint)); frame = \(NSStringFromRect(candidate.frame)); distance = \(String(format: "%.2f", candidate.distance)); aliases = \(candidate.aliases.joined(separator: "|"))"
+                )
+                return candidate.name
+            }
+        }
+
+        let nearestSummary = candidates
+            .sorted { $0.distance < $1.distance }
+            .prefix(4)
+            .map {
+                "\($0.name){app=\($0.matchedApplicationName), frame=\(NSStringFromRect($0.frame)), distance=\(String(format: "%.2f", $0.distance)), aliases=\($0.aliases.joined(separator: "|"))}"
+            }
+            .joined(separator: ", ")
+
+        logProbeIfNeeded(
+            key: "miss:\(nearestSummary)",
+            message: "Pointer missed all Dock items at \(NSStringFromPoint(appKitPoint)); evaluated \(candidates.count) candidates; nearest = [\(nearestSummary)]"
+        )
+
+        return nil
+    }
+
+    private func dockCandidates() -> [DockItemCandidate] {
+        let now = Date()
+        if now < cacheExpiresAt {
+            return cachedCandidates
+        }
+
+        guard AXIsProcessTrusted() else { return [] }
         guard let dockProcess = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first else {
-            return nil
+            return []
         }
 
         let dockElement = AXUIElementCreateApplication(dockProcess.processIdentifier)
@@ -116,7 +182,7 @@ private struct DockAccessibilityProbe {
             attribute: kAXChildrenAttribute as CFString,
             from: dockElement
         )?.first else {
-            return nil
+            return []
         }
 
         let geometry = ScreenGeometry(screenFrames: NSScreen.screens.map(\.frame))
@@ -128,7 +194,6 @@ private struct DockAccessibilityProbe {
             }
 
             guard let matchedApplication = matchingRunningApplication(forDockItemNamed: itemName) else {
-                DebugLog.debug(DebugLog.dock, "Skipping Dock item \(itemName) because no running app alias matched")
                 continue
             }
 
@@ -142,39 +207,19 @@ private struct DockAccessibilityProbe {
             let appKitFrame = geometry.appKitFrame(
                 fromAXFrame: CGRect(origin: axPosition, size: axSize)
             )
-            let distance = distanceFromPoint(appKitPoint, to: appKitFrame)
             let candidate = DockItemCandidate(
                 name: itemName,
                 frame: appKitFrame,
-                distance: distance,
+                distance: 0,
                 matchedApplicationName: matchedApplication.localizedName ?? itemName,
                 aliases: applicationAliases(for: matchedApplication)
             )
             candidates.append(candidate)
-
-            if appKitFrame.contains(appKitPoint) {
-                DebugLog.debug(
-                    DebugLog.dock,
-                    "Pointer hit Dock item \(itemName) mapped to app \(matchedApplication.localizedName ?? itemName) at \(NSStringFromPoint(appKitPoint)); frame = \(NSStringFromRect(appKitFrame)); distance = \(String(format: "%.2f", distance)); aliases = \(applicationAliases(for: matchedApplication).joined(separator: "|"))"
-                )
-                return itemName
-            }
         }
 
-        let nearestSummary = candidates
-            .sorted { $0.distance < $1.distance }
-            .prefix(4)
-            .map {
-                "\($0.name){app=\($0.matchedApplicationName), frame=\(NSStringFromRect($0.frame)), distance=\(String(format: "%.2f", $0.distance)), aliases=\($0.aliases.joined(separator: "|"))}"
-            }
-            .joined(separator: ", ")
-
-        DebugLog.debug(
-            DebugLog.dock,
-            "Pointer missed all Dock items at \(NSStringFromPoint(appKitPoint)); evaluated \(candidates.count) candidates; nearest = [\(nearestSummary)]"
-        )
-
-        return nil
+        cachedCandidates = candidates
+        cacheExpiresAt = now.addingTimeInterval(cacheTTL)
+        return candidates
     }
 
     private func distanceFromPoint(_ point: CGPoint, to frame: CGRect) -> CGFloat {
@@ -191,6 +236,17 @@ private struct DockAccessibilityProbe {
         NSWorkspace.shared.runningApplications.first { application in
             applicationAliases(for: application).contains(dockItemName)
         }
+    }
+
+    private func logProbeIfNeeded(key: String, message: String) {
+        let now = Date()
+        guard key != lastProbeLogKey || now.timeIntervalSince(lastProbeLogAt) >= logTTL else {
+            return
+        }
+
+        lastProbeLogKey = key
+        lastProbeLogAt = now
+        DebugLog.debug(DebugLog.dock, message)
     }
 
     private func applicationAliases(for application: NSRunningApplication) -> [String] {
@@ -276,7 +332,7 @@ private struct DockAccessibilityProbe {
     private struct DockItemCandidate {
         let name: String
         let frame: CGRect
-        let distance: CGFloat
+        var distance: CGFloat
         let matchedApplicationName: String
         let aliases: [String]
     }
