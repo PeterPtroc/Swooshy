@@ -103,7 +103,7 @@ struct SettingsStoreTests {
     }
 
     @Test
-    func titleBarGesturesUseWindowSnappingByDefault() {
+    func titleBarGesturesUseExpectedActionsByDefault() {
         let suiteName = "Swooshy.SettingsStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
@@ -113,7 +113,7 @@ struct SettingsStoreTests {
         #expect(store.titleBarGestureAction(for: .swipeRight) == .rightHalf)
         #expect(store.titleBarGestureAction(for: .swipeDown) == .minimize)
         #expect(store.titleBarGestureAction(for: .swipeUp) == .center)
-        #expect(store.titleBarGestureAction(for: .pinchIn) == nil)
+        #expect(store.titleBarGestureAction(for: .pinchIn) == .quitApplication)
     }
 
     @Test
