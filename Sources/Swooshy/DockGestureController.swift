@@ -6,11 +6,14 @@ import Foundation
 @MainActor
 final class DockGestureController {
     private let windowManager: WindowManager
+    private let layoutEngine: WindowLayoutEngine
     private let alertPresenter: AlertPresenting
     private let settingsStore: SettingsStore
     private let dockProbe = DockAccessibilityProbe()
+    private let titleBarProbe = TitleBarAccessibilityProbe()
     private let monitor = MultitouchInputMonitor()
-    private var recognizer = DockGestureRecognizer()
+    private var dockRecognizer = DockGestureRecognizer()
+    private var titleBarRecognizer = DockGestureRecognizer()
     private var hasShownPermissionHint = false
     private var settingsObserver: NSObjectProtocol?
     private var lastFrameLogAt = Date.distantPast
@@ -19,10 +22,12 @@ final class DockGestureController {
 
     init(
         windowManager: WindowManager,
+        layoutEngine: WindowLayoutEngine,
         alertPresenter: AlertPresenting,
         settingsStore: SettingsStore
     ) {
         self.windowManager = windowManager
+        self.layoutEngine = layoutEngine
         self.alertPresenter = alertPresenter
         self.settingsStore = settingsStore
 
@@ -72,27 +77,45 @@ final class DockGestureController {
 
         // Keep the hot path cheap: only two-finger input can produce Dock gestures.
         guard frame.touches.count == 2 else {
-            _ = recognizer.process(frame: frame, hoveredApplication: nil)
+            _ = dockRecognizer.process(frame: frame, hoveredApplication: nil)
+            _ = titleBarRecognizer.process(frame: frame, hoveredApplication: nil)
             return
         }
 
-        let needsHoveredApplicationLookup = recognizer.requiresHoveredApplication
-        let mouseLocation = needsHoveredApplicationLookup ? NSEvent.mouseLocation : nil
-        let hoveredApplication = mouseLocation.flatMap { dockProbe.hoveredApplication(at: $0) }
-        if shouldLogFrame(touchCount: frame.touches.count, hoveredApplication: hoveredApplication) {
+        let needsDockLookup = dockRecognizer.requiresHoveredApplication
+        let needsTitleBarLookup = titleBarRecognizer.requiresHoveredApplication
+        let mouseLocation = (needsDockLookup || needsTitleBarLookup) ? NSEvent.mouseLocation : nil
+        let hoveredDockApplication = needsDockLookup ? mouseLocation.flatMap { dockProbe.hoveredApplication(at: $0) } : nil
+        let hoveredTitleBarApplication = needsTitleBarLookup ? mouseLocation.flatMap { titleBarProbe.hoveredApplication(at: $0) } : nil
+
+        if shouldLogFrame(
+            touchCount: frame.touches.count,
+            dockHoveredApplication: hoveredDockApplication,
+            titleBarHoveredApplication: hoveredTitleBarApplication
+        ) {
             let touchSummary = frame.touches
                 .map { "#\($0.identifier)=\(NSStringFromPoint($0.position))" }
                 .joined(separator: ", ")
             let mouseDescription = mouseLocation.map(NSStringFromPoint) ?? "<skipped>"
             DebugLog.debug(
                 DebugLog.dock,
-                "Received touch frame with \(frame.touches.count) touches at mouse \(mouseDescription); hovered application = \(hoveredApplication?.logDescription ?? "nil"); touches = [\(touchSummary)]"
+                "Received touch frame with \(frame.touches.count) touches at mouse \(mouseDescription); dock hover = \(hoveredDockApplication?.logDescription ?? "nil"); title-bar hover = \(hoveredTitleBarApplication?.logDescription ?? "nil"); touches = [\(touchSummary)]"
             )
         }
-        guard let event = recognizer.process(frame: frame, hoveredApplication: hoveredApplication) else {
+
+        if let dockEvent = dockRecognizer.process(frame: frame, hoveredApplication: hoveredDockApplication) {
+            handleDockGestureEvent(dockEvent)
             return
         }
 
+        guard let titleBarEvent = titleBarRecognizer.process(frame: frame, hoveredApplication: hoveredTitleBarApplication) else {
+            return
+        }
+
+        handleTitleBarGestureEvent(titleBarEvent)
+    }
+
+    private func handleDockGestureEvent(_ event: DockGestureEvent) {
         do {
             let action = settingsStore.dockGestureAction(for: event.gesture)
             let application = event.application
@@ -123,8 +146,63 @@ final class DockGestureController {
         }
     }
 
-    private func shouldLogFrame(touchCount: Int, hoveredApplication: DockApplicationTarget?) -> Bool {
-        let hoveredApplicationLogValue = hoveredApplication?.logDescription
+    private func handleTitleBarGestureEvent(_ event: DockGestureEvent) {
+        guard
+            let frontmostApplication = NSWorkspace.shared.frontmostApplication,
+            frontmostApplication.processIdentifier == event.application.processIdentifier
+        else {
+            DebugLog.debug(
+                DebugLog.dock,
+                "Ignoring title-bar gesture \(event.gesture.rawValue) because frontmost app changed"
+            )
+            return
+        }
+
+        guard let action = titleBarAction(for: event.gesture) else {
+            DebugLog.debug(DebugLog.dock, "Ignoring unsupported title-bar gesture \(event.gesture.rawValue)")
+            return
+        }
+
+        do {
+            let mouseLocation = NSEvent.mouseLocation
+            DebugLog.info(
+                DebugLog.dock,
+                "Title-bar gesture \(event.gesture.rawValue) mapped to \(String(describing: action)) for \(event.application.logDescription)"
+            )
+            try windowManager.perform(
+                action,
+                layoutEngine: layoutEngine,
+                preferredAppKitPoint: mouseLocation
+            )
+        } catch let error as WindowManagerError {
+            handleWindowManagerError(error)
+        } catch {
+            NSSound.beep()
+            DebugLog.error(DebugLog.dock, "Title-bar gesture action failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func titleBarAction(for gesture: DockGestureKind) -> WindowAction? {
+        switch gesture {
+        case .swipeUp:
+            return .center
+        case .swipeDown:
+            return .minimize
+        case .swipeLeft:
+            return .leftHalf
+        case .swipeRight:
+            return .rightHalf
+        case .pinchIn:
+            return nil
+        }
+    }
+
+    private func shouldLogFrame(
+        touchCount: Int,
+        dockHoveredApplication: DockApplicationTarget?,
+        titleBarHoveredApplication: DockApplicationTarget?
+    ) -> Bool {
+        let hoveredApplicationLogValue = "dock=\(dockHoveredApplication?.logDescription ?? "nil")|title=\(titleBarHoveredApplication?.logDescription ?? "nil")"
         let now = Date()
         let shouldLog = touchCount != lastLoggedTouchCount ||
             hoveredApplicationLogValue != lastLoggedHover ||
@@ -152,6 +230,211 @@ final class DockGestureController {
         default:
             DebugLog.error(DebugLog.dock, "Dock gesture action failed: \(error.localizedDescription)")
         }
+    }
+}
+
+@MainActor
+private final class TitleBarAccessibilityProbe {
+    private let cacheTTL: TimeInterval = 0.2
+    private let logTTL: TimeInterval = 0.4
+    private let minimumTitleBarHeight: CGFloat = 24
+    private let maximumTitleBarHeight: CGFloat = 56
+    private var cachedHitRegion: CachedHitRegion?
+    private var lastProbeLogAt = Date.distantPast
+    private var lastProbeLogKey = ""
+
+    private struct CachedHitRegion {
+        let application: DockApplicationTarget
+        let frame: CGRect
+        let expiresAt: Date
+    }
+
+    func hoveredApplication(at appKitPoint: CGPoint) -> DockApplicationTarget? {
+        let now = Date()
+
+        if let cachedHitRegion, now < cachedHitRegion.expiresAt {
+            if cachedHitRegion.frame.contains(appKitPoint) {
+                logProbeIfNeeded(
+                    key: "hit-cache:\(cachedHitRegion.application.processIdentifier):\(Int(appKitPoint.x)):\(Int(appKitPoint.y))",
+                    message: {
+                        "Pointer hit cached title-bar region for \(cachedHitRegion.application.logDescription) at \(NSStringFromPoint(appKitPoint)); frame = \(NSStringFromRect(cachedHitRegion.frame))"
+                    }
+                )
+                return cachedHitRegion.application
+            }
+            return nil
+        }
+
+        guard AXIsProcessTrusted() else {
+            cachedHitRegion = nil
+            return nil
+        }
+
+        guard
+            let frontmostApplication = NSWorkspace.shared.frontmostApplication,
+            frontmostApplication.isTerminated == false
+        else {
+            cachedHitRegion = nil
+            return nil
+        }
+
+        let appElement = AXUIElementCreateApplication(frontmostApplication.processIdentifier)
+        guard
+            let window = focusedOrMainWindow(in: appElement),
+            let appKitWindowFrame = appKitFrame(of: window)
+        else {
+            cachedHitRegion = nil
+            return nil
+        }
+
+        guard isFullScreen(window) == false else {
+            cachedHitRegion = nil
+            return nil
+        }
+
+        let titleBarFrame = titleBarFrame(for: appKitWindowFrame)
+        guard titleBarFrame.isEmpty == false else {
+            cachedHitRegion = nil
+            return nil
+        }
+
+        let aliases = RunningApplicationIdentity.aliases(for: frontmostApplication)
+        let fallbackName = frontmostApplication.bundleIdentifier ?? "Application"
+        let resolvedName = frontmostApplication.localizedName ?? aliases.first ?? fallbackName
+        let target = DockApplicationTarget(
+            dockItemName: resolvedName,
+            resolvedApplicationName: resolvedName,
+            processIdentifier: frontmostApplication.processIdentifier,
+            bundleIdentifier: frontmostApplication.bundleIdentifier,
+            aliases: aliases
+        )
+
+        cachedHitRegion = CachedHitRegion(
+            application: target,
+            frame: titleBarFrame,
+            expiresAt: now.addingTimeInterval(cacheTTL)
+        )
+
+        if titleBarFrame.contains(appKitPoint) {
+            logProbeIfNeeded(
+                key: "hit:\(target.processIdentifier):\(Int(titleBarFrame.minX)):\(Int(titleBarFrame.minY)):\(Int(titleBarFrame.width)):\(Int(titleBarFrame.height))",
+                message: {
+                    "Pointer hit title-bar region for \(target.logDescription) at \(NSStringFromPoint(appKitPoint)); frame = \(NSStringFromRect(titleBarFrame))"
+                }
+            )
+            return target
+        }
+
+        logProbeIfNeeded(
+            key: "miss:\(target.processIdentifier):\(Int(titleBarFrame.minX)):\(Int(titleBarFrame.minY)):\(Int(titleBarFrame.width)):\(Int(titleBarFrame.height))",
+            message: {
+                "Pointer missed title-bar region for \(target.logDescription) at \(NSStringFromPoint(appKitPoint)); frame = \(NSStringFromRect(titleBarFrame))"
+            }
+        )
+        return nil
+    }
+
+    private func focusedOrMainWindow(in appElement: AXUIElement) -> AXUIElement? {
+        if let focusedWindow = elementAttribute(kAXFocusedWindowAttribute as CFString, from: appElement) {
+            return focusedWindow
+        }
+
+        return elementAttribute(kAXMainWindowAttribute as CFString, from: appElement)
+    }
+
+    private func elementAttribute(_ attribute: CFString, from element: AXUIElement) -> AXUIElement? {
+        var value: CFTypeRef?
+        let error = AXUIElementCopyAttributeValue(element, attribute, &value)
+        guard error == .success, let value else { return nil }
+        guard CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
+        return unsafeDowncast(value, to: AXUIElement.self)
+    }
+
+    private func appKitFrame(of window: AXUIElement) -> CGRect? {
+        guard
+            let axPosition = pointAttribute(kAXPositionAttribute as CFString, from: window),
+            let axSize = sizeAttribute(kAXSizeAttribute as CFString, from: window)
+        else {
+            return nil
+        }
+
+        let geometry = ScreenGeometry(screenFrames: NSScreen.screens.map(\.frame))
+        let appKitFrame = geometry.appKitFrame(
+            fromAXFrame: CGRect(origin: axPosition, size: axSize)
+        )
+
+        guard appKitFrame.width >= 120, appKitFrame.height >= 80 else {
+            return nil
+        }
+
+        return appKitFrame
+    }
+
+    private func titleBarFrame(for windowFrame: CGRect) -> CGRect {
+        let estimatedHeight = floor(windowFrame.height * 0.12)
+        let height = min(maximumTitleBarHeight, max(minimumTitleBarHeight, estimatedHeight))
+
+        return CGRect(
+            x: windowFrame.minX,
+            y: windowFrame.maxY - height,
+            width: windowFrame.width,
+            height: height
+        ).integral
+    }
+
+    private func isFullScreen(_ window: AXUIElement) -> Bool {
+        var value: CFTypeRef?
+        let error = AXUIElementCopyAttributeValue(window, "AXFullScreen" as CFString, &value)
+        guard error == .success, let value else { return false }
+
+        if let boolValue = value as? Bool {
+            return boolValue
+        }
+
+        if let numberValue = value as? NSNumber {
+            return numberValue.boolValue
+        }
+
+        return false
+    }
+
+    private func logProbeIfNeeded(key: String, message: () -> String) {
+        let now = Date()
+        guard key != lastProbeLogKey || now.timeIntervalSince(lastProbeLogAt) >= logTTL else {
+            return
+        }
+
+        lastProbeLogKey = key
+        lastProbeLogAt = now
+        DebugLog.debug(DebugLog.dock, message())
+    }
+
+    private func pointAttribute(_ attribute: CFString, from element: AXUIElement) -> CGPoint? {
+        var value: CFTypeRef?
+        let error = AXUIElementCopyAttributeValue(element, attribute, &value)
+        guard error == .success, let axValue = value else { return nil }
+
+        guard CFGetTypeID(axValue) == AXValueGetTypeID() else { return nil }
+        let pointValue = unsafeDowncast(axValue, to: AXValue.self)
+        guard AXValueGetType(pointValue) == .cgPoint else { return nil }
+
+        var point = CGPoint.zero
+        guard AXValueGetValue(pointValue, .cgPoint, &point) else { return nil }
+        return point
+    }
+
+    private func sizeAttribute(_ attribute: CFString, from element: AXUIElement) -> CGSize? {
+        var value: CFTypeRef?
+        let error = AXUIElementCopyAttributeValue(element, attribute, &value)
+        guard error == .success, let axValue = value else { return nil }
+
+        guard CFGetTypeID(axValue) == AXValueGetTypeID() else { return nil }
+        let sizeValue = unsafeDowncast(axValue, to: AXValue.self)
+        guard AXValueGetType(sizeValue) == .cgSize else { return nil }
+
+        var size = CGSize.zero
+        guard AXValueGetValue(sizeValue, .cgSize, &size) else { return nil }
+        return size
     }
 }
 

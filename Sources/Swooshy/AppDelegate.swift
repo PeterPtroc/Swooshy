@@ -39,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         dockGestureController = DockGestureController(
             windowManager: windowManager,
+            layoutEngine: layoutEngine,
             alertPresenter: alertPresenter,
             settingsStore: settingsStore
         )

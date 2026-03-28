@@ -9,7 +9,7 @@
 "action.left_half" = "贴靠到左半屏";
 "action.right_half" = "贴靠到右半屏";
 "action.maximize" = "最大化到可视区域";
-"action.center" = "居中放大窗口";
+"action.center" = "填充整个屏幕";
 "action.minimize" = "最小化到 Dock";
 "action.restore_window" = "恢复最小化窗口";
 "action.close_window" = "关闭窗口";
@@ -25,14 +25,14 @@
 
 "settings.window.title" = "设置";
 "settings.section.general" = "通用";
-"settings.section.dock_gestures" = "Dock 手势";
+"settings.section.dock_gestures" = "Dock 与标题栏手势";
 "settings.section.shortcuts" = "快捷键";
 "settings.language.label" = "语言";
 "settings.language.system" = "跟随系统";
 "settings.language.english" = "English";
 "settings.language.simplified_chinese" = "简体中文";
 "settings.hotkeys.enabled" = "启用全局快捷键";
-"settings.dock_gestures.enabled" = "启用实验性 Dock 手势";
+"settings.dock_gestures.enabled" = "启用实验性 Dock 与标题栏手势";
 "settings.dock_gestures.gesture.swipe_left" = "双指左滑";
 "settings.dock_gestures.gesture.swipe_right" = "双指右滑";
 "settings.dock_gestures.gesture.swipe_down" = "双指下滑";

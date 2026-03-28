@@ -12,12 +12,12 @@ to move and resize the focused window.
 - Built-in English and Simplified Chinese localization
 - Global hotkeys for all core window actions
 - Settings window for language override, hotkey enable/disable, per-action shortcut recording, and per-gesture Dock action mapping
-- Experimental Dock gestures backed by private multitouch input
+- Experimental Dock and title-bar gestures backed by private multitouch input
 - Focused-window actions:
   - snap left half
   - snap right half
   - maximize to visible frame
-  - center a large window
+  - fill entire screen
   - minimize the focused window to the Dock
   - close the focused window
   - quit the frontmost application
@@ -46,7 +46,7 @@ core behavior is stable and useful.
   - `./scripts/package-macos-app.sh`
 - Detailed instructions: `docs/local-packaging.md`
 
-## Experimental Dock Gestures
+## Experimental Dock and Title-Bar Gestures
 
 - Hover an application icon in the Dock
 - Swipe left with two fingers on the trackpad to cycle that app's windows forward
@@ -54,6 +54,11 @@ core behavior is stable and useful.
 - Swipe down with two fingers on the trackpad to minimize one visible window for that app
 - Swipe up with two fingers on the trackpad to restore one minimized window for that app
 - Pinch in with two fingers on the trackpad to quit that app (default mapping)
+- Hover the title-bar area of the frontmost window
+- Swipe up with two fingers on the trackpad to fill the screen
+- Swipe down with two fingers on the trackpad to minimize the focused window
+- Swipe left with two fingers on the trackpad to snap left half
+- Swipe right with two fingers on the trackpad to snap right half
 - Every Dock gesture action can be customized in `Settings…`
 - This path depends on private multitouch APIs and should be treated as experimental
 
@@ -69,7 +74,7 @@ core behavior is stable and useful.
 - `Control + Option + Command + Left Arrow`: snap left half
 - `Control + Option + Command + Right Arrow`: snap right half
 - `Control + Option + Command + Up Arrow`: maximize to visible frame
-- `Control + Option + Command + C`: center large window
+- `Control + Option + Command + C`: fill entire screen
 - `Control + Option + Command + M`: minimize to Dock
 - `Control + Option + Command + W`: close the focused window
 - `Control + Option + Command + Q`: quit the frontmost application

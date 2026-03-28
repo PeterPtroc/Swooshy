@@ -1,8 +1,6 @@
 import CoreGraphics
 
 struct WindowLayoutEngine {
-    private let centeredFillRatio: CGFloat = 0.8
-
     func targetFrame(
         for action: WindowAction,
         currentWindowFrame: CGRect,
@@ -16,7 +14,7 @@ struct WindowLayoutEngine {
         case .maximize:
             return currentVisibleFrame.integral
         case .center:
-            return centeredFrame(in: currentVisibleFrame)
+            return currentVisibleFrame.integral
         case .minimize,
              .closeWindow,
              .quitApplication,
@@ -27,8 +25,41 @@ struct WindowLayoutEngine {
     }
 
     func screenContainingMost(of windowFrame: CGRect, in screenFrames: [CGRect]) -> CGRect? {
-        screenFrames.max { lhs, rhs in
-            lhs.intersection(windowFrame).area < rhs.intersection(windowFrame).area
+        guard screenFrames.isEmpty == false else {
+            return nil
+        }
+
+        let midpoint = CGPoint(x: windowFrame.midX, y: windowFrame.midY)
+        if let midpointScreen = screenFrames.first(where: { $0.contains(midpoint) }) {
+            return midpointScreen
+        }
+
+        let intersections = screenFrames.map { frame in
+            (frame: frame, overlapArea: frame.intersection(windowFrame).area)
+        }
+
+        let maxOverlapArea = intersections.map(\.overlapArea).max() ?? 0
+        if maxOverlapArea > 0 {
+            let overlapTolerance: CGFloat = 1
+            let bestCandidates = intersections
+                .filter { abs($0.overlapArea - maxOverlapArea) <= overlapTolerance }
+                .map(\.frame)
+
+            if bestCandidates.count == 1 {
+                return bestCandidates.first
+            }
+
+            if let nearestBestCandidate = nearestScreen(to: midpoint, in: bestCandidates) {
+                return nearestBestCandidate
+            }
+        }
+
+        return nearestScreen(to: midpoint, in: screenFrames)
+    }
+
+    private func nearestScreen(to point: CGPoint, in screenFrames: [CGRect]) -> CGRect? {
+        screenFrames.min { lhs, rhs in
+            lhs.center.distance(to: point) < rhs.center.distance(to: point)
         }
     }
 
@@ -51,23 +82,21 @@ struct WindowLayoutEngine {
             height: visibleFrame.height
         ).integral
     }
-
-    private func centeredFrame(in visibleFrame: CGRect) -> CGRect {
-        let width = min(visibleFrame.width, floor(visibleFrame.width * centeredFillRatio))
-        let height = min(visibleFrame.height, floor(visibleFrame.height * centeredFillRatio))
-
-        return CGRect(
-            x: floor(visibleFrame.midX - (width / 2)),
-            y: floor(visibleFrame.midY - (height / 2)),
-            width: width,
-            height: height
-        )
-    }
 }
 
 private extension CGRect {
     var area: CGFloat {
         guard !isNull, !isEmpty else { return 0 }
         return width * height
+    }
+
+    var center: CGPoint {
+        CGPoint(x: midX, y: midY)
+    }
+}
+
+private extension CGPoint {
+    func distance(to point: CGPoint) -> CGFloat {
+        hypot(point.x - x, point.y - y)
     }
 }
