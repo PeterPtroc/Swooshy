@@ -44,7 +44,7 @@ enum DebugLog {
         fileSink.logFileURL.path
     }
 
-    static var isEnabled: Bool {
+    private static var isEnabled: Bool {
         if ProcessInfo.processInfo.environment["SWOOSHY_DEBUG_LOGS"] == "1" {
             return true
         }
@@ -58,7 +58,6 @@ enum DebugLog {
         }
     }
     #else
-    static var isEnabled: Bool { false }
     static func debug(_ channel: Channel, _ message: @autoclosure () -> String) {}
     static func info(_ channel: Channel, _ message: @autoclosure () -> String) {}
     static func error(_ channel: Channel, _ message: @autoclosure () -> String) {}
