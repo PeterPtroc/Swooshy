@@ -1,7 +1,6 @@
 import AppKit
 import ApplicationServices
 import CMultitouchShim
-import Dispatch
 import Foundation
 
 @MainActor
@@ -28,7 +27,9 @@ final class DockGestureController {
         self.settingsStore = settingsStore
 
         monitor.onFrame = { [weak self] frame in
-            self?.handle(frame: frame)
+            Task { @MainActor in
+                self?.handle(frame: frame)
+            }
         }
 
         observeSettings()
@@ -530,13 +531,10 @@ private final class DockAccessibilityProbe {
     }
 }
 
-private final class MultitouchInputMonitor: @unchecked Sendable {
+private final class MultitouchInputMonitor {
     var onFrame: ((TrackpadTouchFrame) -> Void)?
 
     private var isMonitoring = false
-    private let deliveryStateQueue = DispatchQueue(label: "Swooshy.MultitouchInputMonitor.delivery")
-    private var latestFrame: TrackpadTouchFrame?
-    private var isFrameDeliveryScheduled = false
 
     func startIfAvailable() {
         guard isMonitoring == false else { return }
@@ -554,10 +552,6 @@ private final class MultitouchInputMonitor: @unchecked Sendable {
         guard isMonitoring else { return }
         SwooshyMTStopMonitoring()
         isMonitoring = false
-        deliveryStateQueue.sync {
-            latestFrame = nil
-            isFrameDeliveryScheduled = false
-        }
         DebugLog.info(DebugLog.dock, "MultitouchSupport monitoring stopped")
     }
 
@@ -566,14 +560,13 @@ private final class MultitouchInputMonitor: @unchecked Sendable {
         fingerCount: Int,
         timestamp: Double
     ) {
-        let frame: TrackpadTouchFrame
-
         guard fingerCount > 0 else {
-            frame = TrackpadTouchFrame(
-                touches: [],
-                timestamp: timestamp
+            onFrame?(
+                TrackpadTouchFrame(
+                    touches: [],
+                    timestamp: timestamp
+                )
             )
-            enqueue(frame: frame)
             return
         }
 
@@ -588,50 +581,12 @@ private final class MultitouchInputMonitor: @unchecked Sendable {
             )
         }
 
-        frame = TrackpadTouchFrame(
-            touches: touches,
-            timestamp: timestamp
+        onFrame?(
+            TrackpadTouchFrame(
+                touches: touches,
+                timestamp: timestamp
+            )
         )
-        enqueue(frame: frame)
-    }
-
-    private func enqueue(frame: TrackpadTouchFrame) {
-        deliveryStateQueue.async { [weak self] in
-            guard let self else { return }
-
-            self.latestFrame = frame
-            guard self.isFrameDeliveryScheduled == false else { return }
-
-            self.isFrameDeliveryScheduled = true
-            self.scheduleMainDelivery()
-        }
-    }
-
-    private func deliverPendingFrameOnMain() {
-        let frame = deliveryStateQueue.sync { () -> TrackpadTouchFrame? in
-            let frame = latestFrame
-            latestFrame = nil
-            isFrameDeliveryScheduled = false
-            return frame
-        }
-
-        guard let frame else { return }
-        onFrame?(frame)
-
-        deliveryStateQueue.async { [weak self] in
-            guard let self, self.latestFrame != nil, self.isFrameDeliveryScheduled == false else { return }
-
-            self.isFrameDeliveryScheduled = true
-            self.scheduleMainDelivery()
-        }
-    }
-
-    private func scheduleMainDelivery() {
-        let monitorPointer = Unmanaged.passRetained(self).toOpaque()
-        DispatchQueue.main.async {
-            let monitor = Unmanaged<MultitouchInputMonitor>.fromOpaque(monitorPointer).takeRetainedValue()
-            monitor.deliverPendingFrameOnMain()
-        }
     }
 }
 
