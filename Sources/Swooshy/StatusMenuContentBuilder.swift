@@ -85,7 +85,7 @@ struct StatusMenuContentBuilder {
             StatusMenuEntry(
                 kind: .help,
                 title: localized("menu.help"),
-                isEnabled: permissionGranted
+                isEnabled: true
             ),
             StatusMenuEntry(
                 kind: .quit,

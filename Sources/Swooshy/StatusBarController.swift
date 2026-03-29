@@ -160,11 +160,8 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc
     private func showHelpPanel() {
-        guard handleMissingPermissionFallback(for: "help") == false else { return }
-        alertPresenter.show(
-            title: settingsStore.localized("alert.about.title"),
-            message: settingsStore.localized("alert.about.message")
-        )
+        DebugLog.info(DebugLog.app, "Help menu clicked; showing guide")
+        welcomeWindowController.showGuide()
     }
 
     @objc
@@ -236,7 +233,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
                 keyEquivalent: ""
             )
             item.target = self
-            item.isEnabled = enforcePermissionLock ? false : entry.isEnabled
+            item.isEnabled = entry.isEnabled
             return item
         case .settings:
             let item = NSMenuItem(

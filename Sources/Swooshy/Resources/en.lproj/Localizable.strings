@@ -35,6 +35,46 @@
 "welcome.open_settings_action" = "Open Settings";
 "welcome.primary_action" = "Grant Permission and Open Settings";
 "welcome.secondary_action" = "Later";
+"guide.page_format" = "Page %1$d of %2$d";
+"guide.previous_action" = "Back";
+"guide.next_action" = "Next";
+"guide.close_action" = "Close";
+
+"guide.page.dock_switch.title" = "Dock Gestures: Switch Windows for the Same App";
+"guide.page.dock_switch.message" = "When the pointer is hovering over an app icon in the Dock, you can switch between that app's windows directly.";
+"guide.page.dock_switch.bullet1" = "Two-finger swipe left / right: move backward or forward through that app's windows.";
+"guide.page.dock_switch.bullet2" = "Great for Finder, browsers, editors, and any app with several open windows.";
+
+"guide.page.dock_visibility.title" = "Dock Gestures: Hide and Restore Windows";
+"guide.page.dock_visibility.message" = "While hovering over a Dock icon, vertical swipes help you quickly tidy the current app's visible windows.";
+"guide.page.dock_visibility.bullet1" = "Two-finger swipe down: minimize one visible window from that app.";
+"guide.page.dock_visibility.bullet2" = "Two-finger swipe up: restore one minimized window from that app.";
+
+"guide.page.dock_quit.title" = "Dock Gestures: Pinch to Quit";
+"guide.page.dock_quit.message" = "Dock gestures are not limited to swipes. You can also trigger app-level actions with a pinch.";
+"guide.page.dock_quit.bullet1" = "Two-finger pinch in: quit the current application.";
+"guide.page.dock_quit.bullet2" = "This targets the app itself, not just the frontmost window.";
+"guide.page.dock_quit.bullet3" = "If you would rather close a window instead, remap this gesture in Settings.";
+
+"guide.page.titlebar_vertical.title" = "Title Bar Gestures: Fill Screen and Minimize";
+"guide.page.titlebar_vertical.message" = "Hover over the frontmost window's title bar, then use vertical swipes to quickly manage the current window.";
+"guide.page.titlebar_vertical.bullet1" = "Two-finger swipe up: expand the current window to the visible screen area.";
+"guide.page.titlebar_vertical.bullet2" = "Two-finger swipe down: minimize the current window to the Dock.";
+"guide.page.titlebar_vertical.bullet3" = "Recognition is most reliable when the pointer is already resting on the title bar.";
+
+"guide.page.titlebar_horizontal.title" = "Title Bar Gestures: Snap Left and Right";
+"guide.page.titlebar_horizontal.message" = "The title bar trigger area also supports horizontal swipes for fast window arrangement.";
+"guide.page.titlebar_horizontal.bullet1" = "Two-finger swipe left: snap the current window to the left half of the screen.";
+"guide.page.titlebar_horizontal.bullet2" = "Two-finger swipe right: snap the current window to the right half of the screen.";
+
+"guide.page.shortcuts.title" = "Customization and Global Hotkeys";
+"guide.page.shortcuts.message" = "If you prefer the keyboard, Swooshy also includes global shortcuts. Every gesture mapping and hotkey can be recorded and changed from Settings.";
+"guide.page.shortcuts.bullet1" = "Snap left / right: Control + Option + Command + Left / Right Arrow";
+"guide.page.shortcuts.bullet2" = "Fill visible area: Control + Option + Command + Up Arrow / C";
+"guide.page.shortcuts.bullet3" = "Cycle same-app windows: Control + Option + Command + ` (hold Shift to reverse)";
+"guide.page.shortcuts.bullet4" = "Close / minimize: Control + Option + Command + W / M";
+"guide.page.shortcuts.bullet5" = "Quit current app: Control + Option + Command + Q";
+"guide.page.shortcuts.bullet6" = "Open Settings to remap any gesture or shortcut to fit your workflow.";
 
 "settings.window.title" = "Settings";
 "settings.section.general" = "General";

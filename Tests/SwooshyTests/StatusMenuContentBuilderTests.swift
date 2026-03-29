@@ -44,9 +44,10 @@ struct StatusMenuContentBuilderTests {
         )
 
         let enabledEntries = entries.filter(\.isEnabled)
-        #expect(enabledEntries.count == 2)
+        #expect(enabledEntries.count == 3)
         #expect(enabledEntries.contains { $0.kind == .permission })
         #expect(enabledEntries.contains { $0.kind == .refresh })
+        #expect(enabledEntries.contains { $0.kind == .help })
     }
 
     @Test

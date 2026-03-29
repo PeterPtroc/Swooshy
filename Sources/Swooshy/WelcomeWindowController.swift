@@ -4,44 +4,31 @@ import SwiftUI
 
 @MainActor
 final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
+    private let viewModel: WelcomeGuideViewModel
+
     init(
         settingsStore: SettingsStore,
         permissionManager: AccessibilityPermissionManaging,
         onOpenSettings: @escaping () -> Void
     ) {
         var windowReference: NSWindow?
-        let rootView = WelcomeView(
-            title: settingsStore.localized("welcome.title"),
-            message: settingsStore.localized("welcome.message"),
-            permissionStep: settingsStore.localized("welcome.step.permission"),
-            settingsStep: settingsStore.localized("welcome.step.settings"),
-            permissionGrantedText: settingsStore.localized("welcome.permission.granted"),
-            permissionMissingText: settingsStore.localized("welcome.permission.missing"),
-            grantPermissionActionTitle: settingsStore.localized("welcome.grant_permission_action"),
-            refreshPermissionActionTitle: settingsStore.localized("welcome.refresh_permission_action"),
-            openSettingsActionTitle: settingsStore.localized("welcome.open_settings_action"),
-            secondaryActionTitle: settingsStore.localized("welcome.secondary_action"),
-            initialPermissionGranted: permissionManager.isTrusted(promptIfNeeded: false),
-            onRequestPermission: {
-                permissionManager.isTrusted(promptIfNeeded: true)
-            },
-            onRefreshPermissionState: {
-                permissionManager.isTrusted(promptIfNeeded: false)
-            },
-            onOpenSettings: {
-                onOpenSettings()
-                windowReference?.close()
-            },
+        let viewModel = WelcomeGuideViewModel(
+            settingsStore: settingsStore,
+            permissionManager: permissionManager,
+            onOpenSettings: onOpenSettings,
             onDismiss: {
                 windowReference?.close()
             }
         )
+        self.viewModel = viewModel
 
-        let hostingController = NSHostingController(rootView: rootView)
+        let hostingController = NSHostingController(
+            rootView: WelcomeGuideView(viewModel: viewModel)
+        )
         let window = NSWindow(contentViewController: hostingController)
         windowReference = window
 
-        window.setContentSize(NSSize(width: 580, height: 420))
+        window.setContentSize(NSSize(width: 760, height: 720))
         window.styleMask = [.titled, .closable, .miniaturizable]
         window.isReleasedWhenClosed = false
         window.center()
@@ -61,15 +48,42 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func show() {
+        viewModel.presentWelcome()
+        showWindow(nil)
+        window?.makeKeyAndOrderFront(nil)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+    }
+
+    func showGuide() {
+        viewModel.presentGuide()
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
 }
 
-private struct WelcomeView: View {
-    let title: String
-    let message: String
+@MainActor
+private final class WelcomeGuideViewModel: ObservableObject {
+    enum PageKind {
+        case welcome
+        case tutorial
+    }
+
+    struct Page: Identifiable {
+        let id: Int
+        let kind: PageKind
+        let title: String
+        let message: String
+        let bullets: [String]
+        let imageName: String?
+    }
+
+    @Published var currentPageIndex: Int = 0
+    @Published var permissionGranted: Bool
+
+    let windowTitle: String
+    let welcomeTitle: String
+    let welcomeMessage: String
     let permissionStep: String
     let settingsStep: String
     let permissionGrantedText: String
@@ -77,102 +91,364 @@ private struct WelcomeView: View {
     let grantPermissionActionTitle: String
     let refreshPermissionActionTitle: String
     let openSettingsActionTitle: String
-    let secondaryActionTitle: String
-    let onRequestPermission: () -> Bool
-    let onRefreshPermissionState: () -> Bool
-    let onOpenSettings: () -> Void
-    let onDismiss: () -> Void
+    let nextActionTitle: String
+    let previousActionTitle: String
+    let closeActionTitle: String
+    let pageFormat: String
+    let guideTitle: String
+    let pages: [Page]
 
-    @State private var permissionGranted: Bool
+    private let permissionManager: AccessibilityPermissionManaging
+    private let onOpenSettings: () -> Void
+    private let onDismiss: () -> Void
+
+    init(
+        settingsStore: SettingsStore,
+        permissionManager: AccessibilityPermissionManaging,
+        onOpenSettings: @escaping () -> Void,
+        onDismiss: @escaping () -> Void
+    ) {
+        self.windowTitle = settingsStore.localized("welcome.window.title")
+        self.welcomeTitle = settingsStore.localized("welcome.title")
+        self.welcomeMessage = settingsStore.localized("welcome.message")
+        self.permissionStep = settingsStore.localized("welcome.step.permission")
+        self.settingsStep = settingsStore.localized("welcome.step.settings")
+        self.permissionGrantedText = settingsStore.localized("welcome.permission.granted")
+        self.permissionMissingText = settingsStore.localized("welcome.permission.missing")
+        self.grantPermissionActionTitle = settingsStore.localized("welcome.grant_permission_action")
+        self.refreshPermissionActionTitle = settingsStore.localized("welcome.refresh_permission_action")
+        self.openSettingsActionTitle = settingsStore.localized("welcome.open_settings_action")
+        self.nextActionTitle = settingsStore.localized("guide.next_action")
+        self.previousActionTitle = settingsStore.localized("guide.previous_action")
+        self.closeActionTitle = settingsStore.localized("guide.close_action")
+        self.pageFormat = settingsStore.localized("guide.page_format")
+        self.guideTitle = settingsStore.localized("menu.help")
+        self.permissionManager = permissionManager
+        self.onOpenSettings = onOpenSettings
+        self.onDismiss = onDismiss
+        self.permissionGranted = permissionManager.isTrusted(promptIfNeeded: false)
+        self.pages = Self.makePages(settingsStore: settingsStore)
+    }
+
+    var currentPage: Page {
+        pages[currentPageIndex]
+    }
+
+    var isFirstPage: Bool {
+        currentPageIndex == 0
+    }
+
+    var isLastPage: Bool {
+        currentPageIndex == pages.count - 1
+    }
+
+    var canOpenSettings: Bool {
+        permissionGranted
+    }
+
+    var pageIndicatorText: String {
+        let pageNumber = currentPageIndex + 1
+        return String(format: pageFormat, pageNumber, pages.count)
+    }
+
+    func presentWelcome() {
+        refreshPermissionState()
+        currentPageIndex = 0
+    }
+
+    func presentGuide() {
+        refreshPermissionState()
+        currentPageIndex = min(1, pages.count - 1)
+    }
+
+    func goToNextPage() {
+        guard isLastPage == false else { return }
+        currentPageIndex += 1
+    }
+
+    func goToPreviousPage() {
+        guard isFirstPage == false else { return }
+        currentPageIndex -= 1
+    }
+
+    func requestPermission() {
+        permissionGranted = permissionManager.isTrusted(promptIfNeeded: true)
+        refreshPermissionState()
+    }
+
+    func refreshPermissionState() {
+        permissionGranted = permissionManager.isTrusted(promptIfNeeded: false)
+    }
+
+    func dismiss() {
+        onDismiss()
+    }
+
+    func openSettings() {
+        onOpenSettings()
+        onDismiss()
+    }
+
+    private static func makePages(settingsStore: SettingsStore) -> [Page] {
+        [
+            Page(
+                id: 0,
+                kind: .welcome,
+                title: settingsStore.localized("welcome.title"),
+                message: settingsStore.localized("welcome.message"),
+                bullets: [],
+                imageName: nil
+            ),
+            Page(
+                id: 1,
+                kind: .tutorial,
+                title: settingsStore.localized("guide.page.dock_switch.title"),
+                message: settingsStore.localized("guide.page.dock_switch.message"),
+                bullets: [
+                    settingsStore.localized("guide.page.dock_switch.bullet1"),
+                    settingsStore.localized("guide.page.dock_switch.bullet2"),
+                ],
+                imageName: "step1"
+            ),
+            Page(
+                id: 2,
+                kind: .tutorial,
+                title: settingsStore.localized("guide.page.dock_visibility.title"),
+                message: settingsStore.localized("guide.page.dock_visibility.message"),
+                bullets: [
+                    settingsStore.localized("guide.page.dock_visibility.bullet1"),
+                    settingsStore.localized("guide.page.dock_visibility.bullet2"),
+                ],
+                imageName: "step4"
+            ),
+            Page(
+                id: 3,
+                kind: .tutorial,
+                title: settingsStore.localized("guide.page.dock_quit.title"),
+                message: settingsStore.localized("guide.page.dock_quit.message"),
+                bullets: [
+                    settingsStore.localized("guide.page.dock_quit.bullet1"),
+                    settingsStore.localized("guide.page.dock_quit.bullet2"),
+                    settingsStore.localized("guide.page.dock_quit.bullet3"),
+                ],
+                imageName: "step5"
+            ),
+            Page(
+                id: 4,
+                kind: .tutorial,
+                title: settingsStore.localized("guide.page.titlebar_vertical.title"),
+                message: settingsStore.localized("guide.page.titlebar_vertical.message"),
+                bullets: [
+                    settingsStore.localized("guide.page.titlebar_vertical.bullet1"),
+                    settingsStore.localized("guide.page.titlebar_vertical.bullet2"),
+                    settingsStore.localized("guide.page.titlebar_vertical.bullet3"),
+                ],
+                imageName: "step2"
+            ),
+            Page(
+                id: 5,
+                kind: .tutorial,
+                title: settingsStore.localized("guide.page.titlebar_horizontal.title"),
+                message: settingsStore.localized("guide.page.titlebar_horizontal.message"),
+                bullets: [
+                    settingsStore.localized("guide.page.titlebar_horizontal.bullet1"),
+                    settingsStore.localized("guide.page.titlebar_horizontal.bullet2"),
+                ],
+                imageName: "step3"
+            ),
+            Page(
+                id: 6,
+                kind: .tutorial,
+                title: settingsStore.localized("guide.page.shortcuts.title"),
+                message: settingsStore.localized("guide.page.shortcuts.message"),
+                bullets: [
+                    settingsStore.localized("guide.page.shortcuts.bullet1"),
+                    settingsStore.localized("guide.page.shortcuts.bullet2"),
+                    settingsStore.localized("guide.page.shortcuts.bullet3"),
+                    settingsStore.localized("guide.page.shortcuts.bullet4"),
+                    settingsStore.localized("guide.page.shortcuts.bullet5"),
+                    settingsStore.localized("guide.page.shortcuts.bullet6"),
+                ],
+                imageName: nil
+            ),
+        ]
+    }
+}
+
+private struct WelcomeGuideView: View {
+    @ObservedObject var viewModel: WelcomeGuideViewModel
+
     private let permissionRefreshTimer = Timer
         .publish(every: 1.0, on: .main, in: .common)
         .autoconnect()
 
-    init(
-        title: String,
-        message: String,
-        permissionStep: String,
-        settingsStep: String,
-        permissionGrantedText: String,
-        permissionMissingText: String,
-        grantPermissionActionTitle: String,
-        refreshPermissionActionTitle: String,
-        openSettingsActionTitle: String,
-        secondaryActionTitle: String,
-        initialPermissionGranted: Bool,
-        onRequestPermission: @escaping () -> Bool,
-        onRefreshPermissionState: @escaping () -> Bool,
-        onOpenSettings: @escaping () -> Void,
-        onDismiss: @escaping () -> Void
-    ) {
-        self.title = title
-        self.message = message
-        self.permissionStep = permissionStep
-        self.settingsStep = settingsStep
-        self.permissionGrantedText = permissionGrantedText
-        self.permissionMissingText = permissionMissingText
-        self.grantPermissionActionTitle = grantPermissionActionTitle
-        self.refreshPermissionActionTitle = refreshPermissionActionTitle
-        self.openSettingsActionTitle = openSettingsActionTitle
-        self.secondaryActionTitle = secondaryActionTitle
-        self.onRequestPermission = onRequestPermission
-        self.onRefreshPermissionState = onRefreshPermissionState
-        self.onOpenSettings = onOpenSettings
-        self.onDismiss = onDismiss
-        _permissionGranted = State(initialValue: initialPermissionGranted)
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text(title)
-                .font(.system(size: 28, weight: .semibold))
+            header
 
-            Text(message)
+            Group {
+                switch viewModel.currentPage.kind {
+                case .welcome:
+                    welcomeContent
+                case .tutorial:
+                    tutorialContent(page: viewModel.currentPage)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            footer
+        }
+        .padding(24)
+        .frame(minWidth: 720, minHeight: 680)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .onAppear(perform: viewModel.refreshPermissionState)
+        .onReceive(permissionRefreshTimer) { _ in
+            viewModel.refreshPermissionState()
+        }
+    }
+
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(viewModel.currentPage.title)
+                    .font(.system(size: 28, weight: .semibold))
+                Text(viewModel.currentPage.kind == .welcome ? viewModel.windowTitle : viewModel.guideTitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 12)
+
+            Text(viewModel.pageIndicatorText)
+                .font(.subheadline.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var welcomeContent: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text(viewModel.welcomeMessage)
                 .font(.body)
                 .fixedSize(horizontal: false, vertical: true)
 
             VStack(alignment: .leading, spacing: 10) {
-                stepRow(index: 1, text: permissionStep)
-                stepRow(index: 2, text: settingsStep)
+                stepRow(index: 1, text: viewModel.permissionStep)
+                stepRow(index: 2, text: viewModel.settingsStep)
+                stepRow(index: 3, text: viewModel.nextActionTitle)
             }
 
-            HStack(spacing: 8) {
-                Image(systemName: permissionGranted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                    .foregroundStyle(permissionGranted ? Color.green : Color.orange)
-                Text(permissionGranted ? permissionGrantedText : permissionMissingText)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
-                Button(refreshPermissionActionTitle) {
-                    refreshPermissionState()
+            permissionStatus
+
+            tutorialPreview
+        }
+    }
+
+    private func tutorialContent(page: WelcomeGuideViewModel.Page) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Text(page.message)
+                    .font(.body)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let imageName = page.imageName {
+                    GuideImageCard(imageName: imageName)
                 }
-                .controlSize(.small)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(page.bullets.enumerated()), id: \.offset) { _, bullet in
+                        bulletRow(text: bullet)
+                    }
+                }
+
+                if page.id == 6 {
+                    permissionStatus
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .padding(.bottom, 4)
+        }
+    }
+
+    private var tutorialPreview: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(viewModel.guideTitle)
+                .font(.headline)
+
+            Text(viewModel.currentPage.kind == .welcome ? viewModel.pages[1].message : "")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 10) {
+                ForEach(["step1", "step2", "step3"], id: \.self) { imageName in
+                    GuideThumbnail(imageName: imageName)
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private var permissionStatus: some View {
+        HStack(spacing: 8) {
+            Image(systemName: viewModel.permissionGranted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(viewModel.permissionGranted ? Color.green : Color.orange)
+            Text(viewModel.permissionGranted ? viewModel.permissionGrantedText : viewModel.permissionMissingText)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            Button(viewModel.refreshPermissionActionTitle) {
+                viewModel.refreshPermissionState()
+            }
+            .controlSize(.small)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+    }
+
+    private var footer: some View {
+        HStack {
+            if viewModel.isFirstPage == false {
+                Button(viewModel.previousActionTitle) {
+                    viewModel.goToPreviousPage()
+                }
             }
 
             Spacer()
 
-            HStack {
-                Spacer()
-                Button(secondaryActionTitle) {
-                    onDismiss()
+            Button(viewModel.closeActionTitle) {
+                viewModel.dismiss()
+            }
+
+            if viewModel.currentPage.kind == .welcome {
+                Button(viewModel.grantPermissionActionTitle) {
+                    viewModel.requestPermission()
                 }
-                Button(grantPermissionActionTitle) {
-                    permissionGranted = onRequestPermission()
-                    refreshPermissionState()
-                }
-                .disabled(permissionGranted)
-                Button(openSettingsActionTitle) {
-                    onOpenSettings()
+                .disabled(viewModel.permissionGranted)
+            }
+
+            if viewModel.isLastPage {
+                Button(viewModel.openSettingsActionTitle) {
+                    viewModel.openSettings()
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(permissionGranted == false)
+                .disabled(viewModel.canOpenSettings == false)
+            } else {
+                Button(viewModel.nextActionTitle) {
+                    viewModel.goToNextPage()
+                }
+                .buttonStyle(.borderedProminent)
             }
-        }
-        .padding(24)
-        .frame(minWidth: 560, minHeight: 400)
-        .onAppear(perform: refreshPermissionState)
-        .onReceive(permissionRefreshTimer) { _ in
-            refreshPermissionState()
         }
     }
 
@@ -188,7 +464,72 @@ private struct WelcomeView: View {
         }
     }
 
-    private func refreshPermissionState() {
-        permissionGranted = onRefreshPermissionState()
+    private func bulletRow(text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Circle()
+                .fill(Color.accentColor)
+                .frame(width: 6, height: 6)
+                .padding(.top, 7)
+            Text(text)
+                .font(.body)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+private struct GuideImageCard: View {
+    let imageName: String
+
+    var body: some View {
+        Group {
+            if let image = guideImage(named: imageName) {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            } else {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(nsColor: .controlBackgroundColor))
+                    .frame(height: 220)
+                    .overlay {
+                        Text(imageName)
+                            .foregroundStyle(.secondary)
+                    }
+            }
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+    }
+}
+
+private struct GuideThumbnail: View {
+    let imageName: String
+
+    var body: some View {
+        Group {
+            if let image = guideImage(named: imageName) {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                Color(nsColor: .controlBackgroundColor)
+            }
+        }
+        .frame(width: 120, height: 74)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+    }
+}
+
+private func guideImage(named name: String) -> NSImage? {
+    Bundle.appResources.url(forResource: name, withExtension: "jpg", subdirectory: "Guide").flatMap {
+        NSImage(contentsOf: $0)
     }
 }

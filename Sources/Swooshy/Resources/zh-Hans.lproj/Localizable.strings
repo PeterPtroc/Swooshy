@@ -35,6 +35,46 @@
 "welcome.open_settings_action" = "打开设置";
 "welcome.primary_action" = "授权并打开设置";
 "welcome.secondary_action" = "稍后";
+"guide.page_format" = "第 %1$d / %2$d 页";
+"guide.previous_action" = "上一页";
+"guide.next_action" = "下一页";
+"guide.close_action" = "稍后再看";
+
+"guide.page.dock_switch.title" = "Dock 图标手势：切换同应用窗口";
+"guide.page.dock_switch.message" = "当鼠标悬停在 Dock 上的应用图标时，可以直接对该应用的多个窗口进行切换。";
+"guide.page.dock_switch.bullet1" = "双指左滑 / 右滑：在该应用的多个窗口之间快速前后切换。";
+"guide.page.dock_switch.bullet2" = "适合 Finder、浏览器、编辑器等应用快速切换同应用窗口。";
+
+"guide.page.dock_visibility.title" = "Dock 图标手势：显示与隐藏窗口";
+"guide.page.dock_visibility.message" = "悬停在 Dock 图标上时，上下滑动可以快速整理当前应用的可见窗口。";
+"guide.page.dock_visibility.bullet1" = "双指下滑：最小化该应用的一个可见窗口。";
+"guide.page.dock_visibility.bullet2" = "双指上滑：恢复该应用一个处于最小化状态的窗口。";
+
+"guide.page.dock_quit.title" = "Dock 图标手势：捏合退出应用";
+"guide.page.dock_quit.message" = "Dock 图标除了滑动，也支持直接用捏合手势对应用本身执行动作。";
+"guide.page.dock_quit.bullet1" = "双指捏合：退出当前应用。";
+"guide.page.dock_quit.bullet2" = "这个动作针对的是应用本身，不只是关闭单个窗口。";
+"guide.page.dock_quit.bullet3" = "若只想关闭单个窗口，可在设置中把该手势改成别的动作。";
+
+"guide.page.titlebar_vertical.title" = "标题栏手势：快速全屏与最小化";
+"guide.page.titlebar_vertical.message" = "将鼠标悬停在最前窗口的标题栏区域，再做上下滑动，就能快速处理当前窗口。";
+"guide.page.titlebar_vertical.bullet1" = "双指上滑：让当前窗口填充整个屏幕可视区域。";
+"guide.page.titlebar_vertical.bullet2" = "双指下滑：把当前窗口最小化到 Dock。";
+"guide.page.titlebar_vertical.bullet3" = "先把指针停在标题栏，再做手势，识别会更稳定。";
+
+"guide.page.titlebar_horizontal.title" = "标题栏手势：左右贴靠窗口";
+"guide.page.titlebar_horizontal.message" = "标题栏区域同样支持左右滑动，用来快速整理当前窗口布局。";
+"guide.page.titlebar_horizontal.bullet1" = "双指左滑：将当前窗口贴靠到屏幕左半边。";
+"guide.page.titlebar_horizontal.bullet2" = "双指右滑：将当前窗口贴靠到屏幕右半边。";
+
+"guide.page.shortcuts.title" = "自定义设置与全局快捷键";
+"guide.page.shortcuts.message" = "如果你更习惯键盘，Swooshy 也提供了全局快捷键；所有手势映射和快捷键都可以在“设置…”里录制和修改。";
+"guide.page.shortcuts.bullet1" = "停靠左右屏：Control + Option + Command + 左 / 右方向键";
+"guide.page.shortcuts.bullet2" = "填充可视区域：Control + Option + Command + 上方向键 / C";
+"guide.page.shortcuts.bullet3" = "应用内窗口切换：Control + Option + Command + `（配合 Shift 反向）";
+"guide.page.shortcuts.bullet4" = "关闭 / 最小化：Control + Option + Command + W / M";
+"guide.page.shortcuts.bullet5" = "退出当前应用：Control + Option + Command + Q";
+"guide.page.shortcuts.bullet6" = "打开设置后，你可以按自己的习惯重新录制所有快捷键和手势动作。";
 
 "settings.window.title" = "设置";
 "settings.section.general" = "通用";
