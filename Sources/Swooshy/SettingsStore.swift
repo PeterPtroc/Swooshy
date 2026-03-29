@@ -12,8 +12,6 @@ final class SettingsStore {
     private let userDefaults: UserDefaults
     @ObservationIgnored
     private var notificationDispatchPending = false
-    @ObservationIgnored
-    private var pendingNotificationTask: Task<Void, Never>?
 
     var languageOverride: AppLanguage {
         didSet {
@@ -300,21 +298,12 @@ final class SettingsStore {
         }
 
         notificationDispatchPending = true
-        pendingNotificationTask?.cancel()
-        pendingNotificationTask = Task { @MainActor [weak self] in
+        Task { @MainActor [weak self] in
             guard let self else {
                 return
             }
 
-            defer {
-                self.notificationDispatchPending = false
-                self.pendingNotificationTask = nil
-            }
-
-            guard !Task.isCancelled else {
-                return
-            }
-
+            self.notificationDispatchPending = false
             NotificationCenter.default.post(name: .settingsDidChange, object: self)
         }
     }
