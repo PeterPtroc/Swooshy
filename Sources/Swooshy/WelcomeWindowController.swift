@@ -303,6 +303,7 @@ private struct WelcomeGuideView: View {
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear(perform: viewModel.refreshPermissionState)
         .onReceive(permissionRefreshTimer) { _ in
+            guard viewModel.currentPage.kind == .welcome else { return }
             viewModel.refreshPermissionState()
         }
     }
@@ -528,8 +529,31 @@ private struct GuideThumbnail: View {
     }
 }
 
+@MainActor
 private func guideImage(named name: String) -> NSImage? {
-    Bundle.appResources.url(forResource: name, withExtension: "jpg", subdirectory: "Guide").flatMap {
-        NSImage(contentsOf: $0)
+    GuideImageCache.shared.image(named: name)
+}
+
+@MainActor
+private final class GuideImageCache {
+    static let shared = GuideImageCache()
+
+    private var cache: [String: NSImage] = [:]
+
+    func image(named name: String) -> NSImage? {
+        if let cached = cache[name] {
+            return cached
+        }
+
+        guard let url = Bundle.appResources.url(forResource: name, withExtension: "jpg") else {
+            return nil
+        }
+
+        guard let image = NSImage(contentsOf: url) else {
+            return nil
+        }
+
+        cache[name] = image
+        return image
     }
 }
