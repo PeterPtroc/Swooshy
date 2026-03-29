@@ -111,12 +111,21 @@ final class DockGestureController {
 
         isProcessingTouchFrame = true
 
+        Task { @MainActor [weak self] in
+            await self?.drainPendingFrames()
+        }
+    }
+
+    private func drainPendingFrames() async {
+        defer {
+            isProcessingTouchFrame = false
+        }
+
         while let nextFrame = pendingTouchFrame {
             pendingTouchFrame = nil
             handle(frame: nextFrame)
+            await Task.yield()
         }
-
-        isProcessingTouchFrame = false
     }
 
     private func handle(frame: TrackpadTouchFrame) {
