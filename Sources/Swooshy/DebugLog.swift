@@ -79,7 +79,11 @@ private actor DebugLogFileSink {
     }
 
     deinit {
-        try? fileHandle?.close()
+        do {
+            try fileHandle?.close()
+        } catch {
+            NSLog("Swooshy debug log file close failed: %@", error.localizedDescription)
+        }
     }
 
     func append(level: String, channel: String, message: String) {
