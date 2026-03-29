@@ -118,21 +118,21 @@ final class DockGestureController {
     nonisolated private func enqueue(frame: TrackpadTouchFrame) {
         Task { @MainActor [weak self] in
             guard let self, self.isShuttingDown == false else { return }
-            await self.schedule(frame: frame)
+            self.schedule(frame: frame)
         }
     }
 
-    private func schedule(frame: TrackpadTouchFrame) async {
+    private func schedule(frame: TrackpadTouchFrame) {
         guard isShuttingDown == false else { return }
 
         pendingTouchFrame = frame
         guard isProcessingTouchFrame == false else { return }
 
         isProcessingTouchFrame = true
-        await drainPendingFrames()
+        drainPendingFrames()
     }
 
-    private func drainPendingFrames() async {
+    private func drainPendingFrames() {
         defer {
             isProcessingTouchFrame = false
         }
@@ -140,7 +140,6 @@ final class DockGestureController {
         while let nextFrame = pendingTouchFrame {
             pendingTouchFrame = nil
             handle(frame: nextFrame)
-            await Task.yield()
         }
     }
 
