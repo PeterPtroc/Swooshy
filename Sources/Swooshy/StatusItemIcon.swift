@@ -12,7 +12,7 @@ enum StatusItemIcon: String, CaseIterable, Codable, Identifiable, Sendable {
     var id: Self { self }
 
     init(storageValue: String?) {
-        self = StatusItemIcon(rawValue: storageValue ?? "") ?? .groupedWindows
+        self = StatusItemIcon(rawValue: storageValue ?? "") ?? .gale
     }
 
     var storageValue: String {
