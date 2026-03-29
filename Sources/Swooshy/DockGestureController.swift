@@ -25,6 +25,7 @@ final class DockGestureController {
     private var pendingTouchFrame: TrackpadTouchFrame?
     private var isProcessingTouchFrame = false
     private var monitoringState: MonitoringState?
+    private var isShuttingDown = false
 
     private struct MonitoringState: Equatable {
         let dockGesturesEnabled: Bool
@@ -53,11 +54,22 @@ final class DockGestureController {
     }
 
     func shutdown() {
+        guard isShuttingDown == false else { return }
+        isShuttingDown = true
+
         if let settingsObserver {
             NotificationCenter.default.removeObserver(settingsObserver)
             self.settingsObserver = nil
         }
 
+        pendingTouchFrame = nil
+        isProcessingTouchFrame = false
+        monitoringState = nil
+        dockRecognizer = DockGestureRecognizer()
+        titleBarRecognizer = DockGestureRecognizer()
+        dockProbe.clearCache()
+        titleBarProbe.clearCache()
+        monitor.onFrame = nil
         monitor.stop()
     }
 
@@ -76,6 +88,10 @@ final class DockGestureController {
     }
 
     private func syncMonitoring() {
+        guard isShuttingDown == false else {
+            return
+        }
+
         let state = MonitoringState(
             dockGesturesEnabled: settingsStore.dockGesturesEnabled,
             titleBarGesturesEnabled: settingsStore.titleBarGesturesEnabled
@@ -101,11 +117,14 @@ final class DockGestureController {
 
     nonisolated private func enqueue(frame: TrackpadTouchFrame) {
         Task { @MainActor [weak self] in
-            self?.schedule(frame: frame)
+            guard let self, self.isShuttingDown == false else { return }
+            self.schedule(frame: frame)
         }
     }
 
     private func schedule(frame: TrackpadTouchFrame) {
+        guard isShuttingDown == false else { return }
+
         pendingTouchFrame = frame
         guard isProcessingTouchFrame == false else { return }
 
@@ -129,6 +148,8 @@ final class DockGestureController {
     }
 
     private func handle(frame: TrackpadTouchFrame) {
+        guard isShuttingDown == false else { return }
+
         let dockGesturesEnabled = settingsStore.dockGesturesEnabled
         let titleBarGesturesEnabled = settingsStore.titleBarGesturesEnabled
         guard dockGesturesEnabled || titleBarGesturesEnabled else { return }

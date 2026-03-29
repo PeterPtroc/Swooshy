@@ -841,7 +841,7 @@ struct WindowManager: WindowManaging {
             throw WindowManagerError.unableToSetFrame
         }
 
-        let currentFrame = try? self.frame(of: window)
+        let currentFrame = readFrameBestEffort(of: window, context: "before frame write")
         let preferredOrder = frameWriteOrder(from: currentFrame, to: frame)
 
         DebugLog.debug(
@@ -858,7 +858,7 @@ struct WindowManager: WindowManaging {
             order: preferredOrder
         )
 
-        guard let appliedFrame = try? self.frame(of: window) else {
+        guard let appliedFrame = readFrameBestEffort(of: window, context: "after \(preferredOrder.rawValue) frame write") else {
             return
         }
 
@@ -878,14 +878,30 @@ struct WindowManager: WindowManaging {
                 order: fallbackOrder
             )
 
-            guard let retriedFrame = try? self.frame(of: window), framesAreClose(retriedFrame, frame) else {
-                let finalFrame = (try? self.frame(of: window)).map(NSStringFromRect) ?? "unavailable"
+            guard
+                let retriedFrame = readFrameBestEffort(of: window, context: "after \(fallbackOrder.rawValue) frame write"),
+                framesAreClose(retriedFrame, frame)
+            else {
+                let finalFrame = readFrameBestEffort(of: window, context: "final frame read after mismatch")
+                    .map(NSStringFromRect) ?? "unavailable"
                 DebugLog.error(
                     DebugLog.accessibility,
                     "Failed to apply requested frame for window \(windowSummary([window])). Requested origin = \(NSStringFromPoint(origin)), size = \(NSStringFromSize(size)), final AX frame = \(finalFrame)"
                 )
                 throw WindowManagerError.unableToSetFrame
             }
+        }
+    }
+
+    private func readFrameBestEffort(of window: AXUIElement, context: String) -> CGRect? {
+        do {
+            return try frame(of: window)
+        } catch {
+            DebugLog.debug(
+                DebugLog.accessibility,
+                "Failed to read AX frame (\(context)): \(error.localizedDescription)"
+            )
+            return nil
         }
     }
 

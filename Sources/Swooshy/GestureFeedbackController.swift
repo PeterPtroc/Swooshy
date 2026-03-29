@@ -249,8 +249,9 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
             context.duration = 0.12
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
             panel.animator().alphaValue = 0
-        } completionHandler: {
-            Task { @MainActor in
+        } completionHandler: { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
                 guard expectedGeneration == self.hideGeneration else { return }
                 self.panel.orderOut(nil)
             }
