@@ -99,6 +99,7 @@ private final class WelcomeGuideViewModel: ObservableObject {
     let nextPreviewTitle: String
     let pages: [Page]
 
+    private let settingsStore: SettingsStore
     private let permissionManager: AccessibilityPermissionManaging
     private let onOpenSettings: () -> Void
     private let onDismiss: () -> Void
@@ -109,6 +110,7 @@ private final class WelcomeGuideViewModel: ObservableObject {
         onOpenSettings: @escaping () -> Void,
         onDismiss: @escaping () -> Void
     ) {
+        self.settingsStore = settingsStore
         self.windowTitle = settingsStore.localized("welcome.window.title")
         self.welcomeTitle = settingsStore.localized("welcome.title")
         self.welcomeMessage = settingsStore.localized("welcome.message")
@@ -189,6 +191,10 @@ private final class WelcomeGuideViewModel: ObservableObject {
     func openSettings() {
         onOpenSettings()
         onDismiss()
+    }
+
+    func localized(_ key: String) -> String {
+        settingsStore.localized(key)
     }
 
     private static func makePages(settingsStore: SettingsStore) -> [Page] {
@@ -279,6 +285,7 @@ private final class WelcomeGuideViewModel: ObservableObject {
 
 private struct WelcomeGuideView: View {
     @ObservedObject var viewModel: WelcomeGuideViewModel
+    @State private var launchAtLoginController = LaunchAtLoginController()
 
     private let permissionRefreshTimer = Timer
         .publish(every: 1.0, on: .main, in: .common)
@@ -304,6 +311,9 @@ private struct WelcomeGuideView: View {
         .frame(minWidth: 720, minHeight: 680)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear(perform: viewModel.refreshPermissionState)
+        .onAppear {
+            launchAtLoginController.refresh(localize: viewModel.localized)
+        }
         .onReceive(permissionRefreshTimer) { _ in
             guard viewModel.currentPage.kind == .welcome else { return }
             viewModel.refreshPermissionState()
@@ -341,6 +351,7 @@ private struct WelcomeGuideView: View {
             }
 
             permissionStatus
+            launchAtLoginSection
 
             Spacer(minLength: 0)
         }
@@ -423,6 +434,34 @@ private struct WelcomeGuideView: View {
                 viewModel.refreshPermissionState()
             }
             .controlSize(.small)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+    }
+
+    private var launchAtLoginSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Toggle(
+                viewModel.localized("settings.launch_at_login.enabled"),
+                isOn: Binding(
+                    get: { launchAtLoginController.isEnabled },
+                    set: { launchAtLoginController.setEnabled($0, localize: viewModel.localized) }
+                )
+            )
+
+            Text(viewModel.localized("settings.launch_at_login.footer"))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            if let statusMessage = launchAtLoginController.statusMessage,
+               statusMessage.isEmpty == false {
+                Text(statusMessage)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(14)
         .background(
