@@ -967,12 +967,42 @@ struct WindowManager: WindowManaging {
         axFrame: CGRect,
         appKitFrame: CGRect
     ) {
-        let title = (try? stringAttribute(kAXTitleAttribute as CFString, from: window)) ?? "<untitled>"
-        let role = (try? stringAttribute(kAXRoleAttribute as CFString, from: window)) ?? "<unknown>"
-        let subrole = (try? stringAttribute(kAXSubroleAttribute as CFString, from: window)) ?? "<unknown>"
-        let isMain = (try? booleanAttribute(kAXMainAttribute as CFString, from: window)) ?? false
-        let isFocused = (try? booleanAttribute(kAXFocusedAttribute as CFString, from: window)) ?? false
-        let isMinimized = (try? booleanAttribute(kAXMinimizedAttribute as CFString, from: window)) ?? false
+        let title = readOptionalAXAttribute(
+            context: "AXTitle in logFrameRead",
+            fallback: "<untitled>"
+        ) {
+            try stringAttribute(kAXTitleAttribute as CFString, from: window)
+        }
+        let role = readOptionalAXAttribute(
+            context: "AXRole in logFrameRead",
+            fallback: "<unknown>"
+        ) {
+            try stringAttribute(kAXRoleAttribute as CFString, from: window)
+        }
+        let subrole = readOptionalAXAttribute(
+            context: "AXSubrole in logFrameRead",
+            fallback: "<unknown>"
+        ) {
+            try stringAttribute(kAXSubroleAttribute as CFString, from: window)
+        }
+        let isMain = readOptionalAXAttribute(
+            context: "AXMain in logFrameRead",
+            fallback: false
+        ) {
+            try booleanAttribute(kAXMainAttribute as CFString, from: window)
+        }
+        let isFocused = readOptionalAXAttribute(
+            context: "AXFocused in logFrameRead",
+            fallback: false
+        ) {
+            try booleanAttribute(kAXFocusedAttribute as CFString, from: window)
+        }
+        let isMinimized = readOptionalAXAttribute(
+            context: "AXMinimized in logFrameRead",
+            fallback: false
+        ) {
+            try booleanAttribute(kAXMinimizedAttribute as CFString, from: window)
+        }
 
         DebugLog.debug(
             DebugLog.windows,
@@ -1155,7 +1185,12 @@ struct WindowManager: WindowManaging {
 
     private func windowDescriptor(for window: AXUIElement) throws -> WindowOrderDescriptor {
         WindowOrderDescriptor(
-            title: (try? stringAttribute(kAXTitleAttribute as CFString, from: window)) ?? "",
+            title: readOptionalAXAttribute(
+                context: "AXTitle in windowDescriptor",
+                fallback: ""
+            ) {
+                try stringAttribute(kAXTitleAttribute as CFString, from: window)
+            },
             frame: try frame(of: window)
         )
     }
@@ -1173,22 +1208,54 @@ struct WindowManager: WindowManaging {
     }
 
     private func isMinimized(_ window: AXUIElement) -> Bool {
-        (try? booleanAttribute(kAXMinimizedAttribute as CFString, from: window)) ?? false
+        readOptionalAXAttribute(
+            context: "AXMinimized in isMinimized",
+            fallback: false
+        ) {
+            try booleanAttribute(kAXMinimizedAttribute as CFString, from: window)
+        }
     }
 
     private func windowSummary(_ windows: [AXUIElement]) -> String {
         windows.map { window in
-            let title = (try? stringAttribute(kAXTitleAttribute as CFString, from: window)) ?? "<untitled>"
-            let minimized = ((try? booleanAttribute(kAXMinimizedAttribute as CFString, from: window)) ?? false) ? "min" : "visible"
+            let title = readOptionalAXAttribute(
+                context: "AXTitle in windowSummary",
+                fallback: "<untitled>"
+            ) {
+                try stringAttribute(kAXTitleAttribute as CFString, from: window)
+            }
+            let minimized = readOptionalAXAttribute(
+                context: "AXMinimized in windowSummary",
+                fallback: false
+            ) {
+                try booleanAttribute(kAXMinimizedAttribute as CFString, from: window)
+            } ? "min" : "visible"
             let frameDescription: String
-            if let frame = try? frame(of: window) {
-                frameDescription = NSStringFromRect(frame)
-            } else {
-                frameDescription = "<unknown-frame>"
+            frameDescription = readOptionalAXAttribute(
+                context: "AXFrame in windowSummary",
+                fallback: "<unknown-frame>"
+            ) {
+                NSStringFromRect(try frame(of: window))
             }
             return "\"\(title)\"{\(minimized), frame=\(frameDescription)}"
         }
         .joined(separator: ", ")
+    }
+
+    private func readOptionalAXAttribute<T>(
+        context: String,
+        fallback: T,
+        read: () throws -> T
+    ) -> T {
+        do {
+            return try read()
+        } catch {
+            DebugLog.debug(
+                DebugLog.accessibility,
+                "Failed to read \(context): \(error.localizedDescription)"
+            )
+            return fallback
+        }
     }
 
     private func stringAttribute(_ attribute: CFString, from element: AXUIElement) throws -> String {
