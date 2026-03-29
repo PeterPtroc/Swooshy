@@ -17,11 +17,19 @@ final class DockGestureController {
     private var titleBarRecognizer = DockGestureRecognizer()
     private var hasShownPermissionHint = false
     private var settingsObserver: NSObjectProtocol?
+#if DEBUG
     private var lastFrameLogAt = Date.distantPast
     private var lastLoggedTouchCount = -1
     private var lastLoggedHover: String?
+#endif
     private var pendingTouchFrame: TrackpadTouchFrame?
     private var isProcessingTouchFrame = false
+    private var monitoringState: MonitoringState?
+
+    private struct MonitoringState: Equatable {
+        let dockGesturesEnabled: Bool
+        let titleBarGesturesEnabled: Bool
+    }
 
     init(
         windowManager: WindowManager,
@@ -66,12 +74,19 @@ final class DockGestureController {
     }
 
     private func syncMonitoring() {
+        let state = MonitoringState(
+            dockGesturesEnabled: settingsStore.dockGesturesEnabled,
+            titleBarGesturesEnabled: settingsStore.titleBarGesturesEnabled
+        )
+        guard state != monitoringState else { return }
+
+        monitoringState = state
         dockRecognizer = DockGestureRecognizer()
         titleBarRecognizer = DockGestureRecognizer()
         pendingTouchFrame = nil
         isProcessingTouchFrame = false
 
-        if settingsStore.dockGesturesEnabled || settingsStore.titleBarGesturesEnabled {
+        if state.dockGesturesEnabled || state.titleBarGesturesEnabled {
             DebugLog.info(DebugLog.dock, "Starting trackpad gesture monitoring")
             monitor.startIfAvailable()
         } else {
@@ -120,8 +135,11 @@ final class DockGestureController {
         let needsTitleBarLookup = titleBarGesturesEnabled && titleBarRecognizer.requiresHoveredApplication
         let mouseLocation = (needsDockLookup || needsTitleBarLookup) ? NSEvent.mouseLocation : nil
         let hoveredDockApplication = needsDockLookup ? mouseLocation.flatMap { dockProbe.hoveredApplication(at: $0) } : nil
-        let hoveredTitleBarApplication = needsTitleBarLookup ? mouseLocation.flatMap { titleBarProbe.hoveredApplication(at: $0) } : nil
+        let hoveredTitleBarApplication = needsTitleBarLookup && hoveredDockApplication == nil
+            ? mouseLocation.flatMap { titleBarProbe.hoveredApplication(at: $0) }
+            : nil
 
+#if DEBUG
         if shouldLogFrame(
             touchCount: frame.touches.count,
             dockHoveredApplication: hoveredDockApplication,
@@ -136,6 +154,7 @@ final class DockGestureController {
                 "Received touch frame with \(frame.touches.count) touches at mouse \(mouseDescription); dock hover = \(hoveredDockApplication?.logDescription ?? "nil"); title-bar hover = \(hoveredTitleBarApplication?.logDescription ?? "nil"); touches = [\(touchSummary)]"
             )
         }
+#endif
 
         if dockGesturesEnabled, let dockEvent = dockRecognizer.process(frame: frame, hoveredApplication: hoveredDockApplication) {
             handleDockGestureEvent(dockEvent)
@@ -232,6 +251,7 @@ final class DockGestureController {
         settingsStore.titleBarGestureAction(for: gesture)
     }
 
+#if DEBUG
     private func shouldLogFrame(
         touchCount: Int,
         dockHoveredApplication: DockApplicationTarget?,
@@ -251,6 +271,7 @@ final class DockGestureController {
 
         return shouldLog
     }
+#endif
 
     private func handleWindowManagerError(_ error: WindowManagerError) {
         switch error {
@@ -265,6 +286,35 @@ final class DockGestureController {
         default:
             DebugLog.error(DebugLog.dock, "Dock gesture action failed: \(error.localizedDescription)")
         }
+    }
+}
+
+struct DockHoverCandidate: Equatable {
+    let target: DockApplicationTarget
+    let frame: CGRect
+}
+
+struct DockHoverSnapshot: Equatable {
+    let candidates: [DockHoverCandidate]
+    let bounds: CGRect
+
+    init(candidates: [DockHoverCandidate]) {
+        self.candidates = candidates
+        self.bounds = candidates.reduce(into: CGRect.null) { partialResult, candidate in
+            partialResult = partialResult.union(candidate.frame)
+        }
+    }
+
+    func hoveredCandidate(at point: CGPoint) -> DockHoverCandidate? {
+        candidates.first { $0.frame.contains(point) }
+    }
+
+    func containsApproximateDockRegion(_ point: CGPoint) -> Bool {
+        guard bounds.isNull == false, bounds.isEmpty == false else {
+            return false
+        }
+
+        return bounds.contains(point)
     }
 }
 
@@ -475,12 +525,27 @@ private final class TitleBarAccessibilityProbe {
 
 @MainActor
 private final class DockAccessibilityProbe {
-    private let cacheTTL: TimeInterval = 0.25
+    private let candidateCacheTTL: TimeInterval = 0.25
+    private let regionCacheTTL: TimeInterval = 1.0
     private let logTTL: TimeInterval = 0.4
-    private var cachedCandidates: [DockItemCandidate] = []
-    private var cacheExpiresAt = Date.distantPast
+    private var cachedSnapshot: CachedSnapshot?
+    private var cachedHoverHit: CachedHoverHit?
+#if DEBUG
     private var lastProbeLogAt = Date.distantPast
     private var lastProbeLogKey = ""
+#endif
+
+    private struct CachedSnapshot {
+        let snapshot: DockHoverSnapshot
+        let candidateExpiresAt: Date
+        let regionExpiresAt: Date
+    }
+
+    private struct CachedHoverHit {
+        let target: DockApplicationTarget
+        let frame: CGRect
+        let expiresAt: Date
+    }
 
     private struct ApplicationRecord {
         let application: NSRunningApplication
@@ -489,56 +554,75 @@ private final class DockAccessibilityProbe {
     }
 
     func hoveredApplication(at appKitPoint: CGPoint) -> DockApplicationTarget? {
-        let candidates = dockCandidates()
-        var nearestCandidates: [DockItemCandidate] = []
+        let now = Date()
 
-        for candidate in candidates {
-            var candidate = candidate
-            candidate.distance = distanceFromPoint(appKitPoint, to: candidate.frame)
-
-            if candidate.frame.contains(appKitPoint) {
-                logProbeIfNeeded(
-                    key: "hit:\(candidate.target.dockItemName):\(candidate.target.processIdentifier):\(NSStringFromPoint(appKitPoint))",
-                    message: {
-                        "Pointer hit Dock item \(candidate.target.dockItemName) mapped to app \(candidate.target.logDescription) at \(NSStringFromPoint(appKitPoint)); frame = \(NSStringFromRect(candidate.frame)); distance = \(String(format: "%.2f", candidate.distance)); aliases = \(candidate.target.aliases.joined(separator: "|"))"
-                    }
-                )
-                return candidate.target
-            }
-
-            insertNearestCandidate(candidate, into: &nearestCandidates)
+        if
+            let cachedHoverHit,
+            now < cachedHoverHit.expiresAt,
+            cachedHoverHit.frame.contains(appKitPoint)
+        {
+            logProbeIfNeeded(
+                key: "hit-cache:\(cachedHoverHit.target.dockItemName):\(cachedHoverHit.target.processIdentifier):\(Int(appKitPoint.x)):\(Int(appKitPoint.y))",
+                message: {
+                    "Pointer hit cached Dock item \(cachedHoverHit.target.dockItemName) mapped to app \(cachedHoverHit.target.logDescription) at \(NSStringFromPoint(appKitPoint)); frame = \(NSStringFromRect(cachedHoverHit.frame)); aliases = \(cachedHoverHit.target.aliases.joined(separator: "|"))"
+                }
+            )
+            return cachedHoverHit.target
         }
 
-        let nearestKey = nearestCandidates
-            .map {
-                "\($0.target.dockItemName):\($0.target.processIdentifier):\(Int($0.distance * 100))"
-            }
-            .joined(separator: ",")
+        let snapshot = dockSnapshot(containing: appKitPoint, at: now)
+        guard snapshot.containsApproximateDockRegion(appKitPoint) else {
+            cachedHoverHit = nil
+            return nil
+        }
 
+        guard let hoveredCandidate = snapshot.hoveredCandidate(at: appKitPoint) else {
+            cachedHoverHit = nil
+            logMissIfNeeded(at: appKitPoint, snapshot: snapshot)
+            return nil
+        }
+
+        cachedHoverHit = CachedHoverHit(
+            target: hoveredCandidate.target,
+            frame: hoveredCandidate.frame,
+            expiresAt: now.addingTimeInterval(candidateCacheTTL)
+        )
         logProbeIfNeeded(
-            key: "miss:\(nearestKey)",
+            key: "hit:\(hoveredCandidate.target.dockItemName):\(hoveredCandidate.target.processIdentifier):\(Int(appKitPoint.x)):\(Int(appKitPoint.y))",
             message: {
-                let nearestSummary = nearestCandidates
-                    .map {
-                        "\($0.target.dockItemName){app=\($0.target.logDescription), frame=\(NSStringFromRect($0.frame)), distance=\(String(format: "%.2f", $0.distance)), aliases=\($0.target.aliases.joined(separator: "|"))}"
-                    }
-                    .joined(separator: ", ")
-                return "Pointer missed all Dock items at \(NSStringFromPoint(appKitPoint)); evaluated \(candidates.count) candidates; nearest = [\(nearestSummary)]"
+                "Pointer hit Dock item \(hoveredCandidate.target.dockItemName) mapped to app \(hoveredCandidate.target.logDescription) at \(NSStringFromPoint(appKitPoint)); frame = \(NSStringFromRect(hoveredCandidate.frame)); aliases = \(hoveredCandidate.target.aliases.joined(separator: "|"))"
             }
         )
-
-        return nil
+        return hoveredCandidate.target
     }
 
-    private func dockCandidates() -> [DockItemCandidate] {
-        let now = Date()
-        if now < cacheExpiresAt {
-            return cachedCandidates
+    private func dockSnapshot(containing appKitPoint: CGPoint, at now: Date) -> DockHoverSnapshot {
+        if let cachedSnapshot {
+            if now < cachedSnapshot.candidateExpiresAt {
+                return cachedSnapshot.snapshot
+            }
+
+            if
+                now < cachedSnapshot.regionExpiresAt,
+                cachedSnapshot.snapshot.containsApproximateDockRegion(appKitPoint) == false
+            {
+                return cachedSnapshot.snapshot
+            }
         }
 
-        guard AXIsProcessTrusted() else { return [] }
+        let snapshot = rebuildDockSnapshot()
+        cachedSnapshot = CachedSnapshot(
+            snapshot: snapshot,
+            candidateExpiresAt: now.addingTimeInterval(candidateCacheTTL),
+            regionExpiresAt: now.addingTimeInterval(regionCacheTTL)
+        )
+        return snapshot
+    }
+
+    private func rebuildDockSnapshot() -> DockHoverSnapshot {
+        guard AXIsProcessTrusted() else { return DockHoverSnapshot(candidates: []) }
         guard let dockProcess = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first else {
-            return []
+            return DockHoverSnapshot(candidates: [])
         }
 
         let dockElement = AXUIElementCreateApplication(dockProcess.processIdentifier)
@@ -546,11 +630,11 @@ private final class DockAccessibilityProbe {
             attribute: kAXChildrenAttribute as CFString,
             from: dockElement
         )?.first else {
-            return []
+            return DockHoverSnapshot(candidates: [])
         }
 
         let geometry = ScreenGeometry(screenFrames: NSScreen.screens.map(\.frame))
-        var candidates: [DockItemCandidate] = []
+        var candidates: [DockHoverCandidate] = []
         let applicationRecords = runningApplicationRecords()
         var qualityScoreCache: [pid_t: Int] = [:]
 
@@ -586,27 +670,14 @@ private final class DockAccessibilityProbe {
                 bundleIdentifier: matchedApplication.bundleIdentifier,
                 aliases: matchedRecord.aliases
             )
-            let candidate = DockItemCandidate(
+            let candidate = DockHoverCandidate(
                 target: target,
-                frame: appKitFrame,
-                distance: 0
+                frame: appKitFrame
             )
             candidates.append(candidate)
         }
 
-        cachedCandidates = candidates
-        cacheExpiresAt = now.addingTimeInterval(cacheTTL)
-        return candidates
-    }
-
-    private func distanceFromPoint(_ point: CGPoint, to frame: CGRect) -> CGFloat {
-        if frame.contains(point) {
-            return 0
-        }
-
-        let dx = max(frame.minX - point.x, 0, point.x - frame.maxX)
-        let dy = max(frame.minY - point.y, 0, point.y - frame.maxY)
-        return sqrt((dx * dx) + (dy * dy))
+        return DockHoverSnapshot(candidates: candidates)
     }
 
     private func matchingRunningApplication(
@@ -730,6 +801,7 @@ private final class DockAccessibilityProbe {
     }
 
     private func logProbeIfNeeded(key: String, message: () -> String) {
+#if DEBUG
         let now = Date()
         guard key != lastProbeLogKey || now.timeIntervalSince(lastProbeLogAt) >= logTTL else {
             return
@@ -738,18 +810,7 @@ private final class DockAccessibilityProbe {
         lastProbeLogKey = key
         lastProbeLogAt = now
         DebugLog.debug(DebugLog.dock, message())
-    }
-
-    private func insertNearestCandidate(
-        _ candidate: DockItemCandidate,
-        into nearestCandidates: inout [DockItemCandidate]
-    ) {
-        let insertionIndex = nearestCandidates.firstIndex { candidate.distance < $0.distance } ?? nearestCandidates.endIndex
-        nearestCandidates.insert(candidate, at: insertionIndex)
-
-        if nearestCandidates.count > 4 {
-            nearestCandidates.removeLast()
-        }
+#endif
     }
 
     private func appMatchScore(forNormalizedDockName normalizedDockName: String, normalizedAliases: [String]) -> Int {
@@ -828,10 +889,48 @@ private final class DockAccessibilityProbe {
         return size
     }
 
-    private struct DockItemCandidate {
-        let target: DockApplicationTarget
-        let frame: CGRect
-        var distance: CGFloat
+    private func logMissIfNeeded(at appKitPoint: CGPoint, snapshot: DockHoverSnapshot) {
+#if DEBUG
+        var nearestCandidates: [(candidate: DockHoverCandidate, distance: CGFloat)] = []
+
+        for candidate in snapshot.candidates {
+            let distance = distanceFromPoint(appKitPoint, to: candidate.frame)
+            let insertionIndex = nearestCandidates.firstIndex { distance < $0.distance } ?? nearestCandidates.endIndex
+            nearestCandidates.insert((candidate, distance), at: insertionIndex)
+
+            if nearestCandidates.count > 4 {
+                nearestCandidates.removeLast()
+            }
+        }
+
+        let nearestKey = nearestCandidates
+            .map {
+                "\($0.candidate.target.dockItemName):\($0.candidate.target.processIdentifier):\(Int($0.distance * 100))"
+            }
+            .joined(separator: ",")
+
+        logProbeIfNeeded(
+            key: "miss:\(nearestKey)",
+            message: {
+                let nearestSummary = nearestCandidates
+                    .map {
+                        "\($0.candidate.target.dockItemName){app=\($0.candidate.target.logDescription), frame=\(NSStringFromRect($0.candidate.frame)), distance=\(String(format: "%.2f", $0.distance)), aliases=\($0.candidate.target.aliases.joined(separator: "|"))}"
+                    }
+                    .joined(separator: ", ")
+                return "Pointer missed all Dock items at \(NSStringFromPoint(appKitPoint)); evaluated \(snapshot.candidates.count) candidates; nearest = [\(nearestSummary)]"
+            }
+        )
+#endif
+    }
+
+    private func distanceFromPoint(_ point: CGPoint, to frame: CGRect) -> CGFloat {
+        if frame.contains(point) {
+            return 0
+        }
+
+        let dx = max(frame.minX - point.x, 0, point.x - frame.maxX)
+        let dy = max(frame.minY - point.y, 0, point.y - frame.maxY)
+        return sqrt((dx * dx) + (dy * dy))
     }
 }
 
@@ -839,12 +938,14 @@ private final class MultitouchInputMonitor {
     var onFrame: ((TrackpadTouchFrame) -> Void)?
 
     private var isMonitoring = false
+    private var lastDeliveredFingerCount = -1
 
     func startIfAvailable() {
         guard isMonitoring == false else { return }
 
         let context = Unmanaged.passUnretained(self).toOpaque()
         isMonitoring = SwooshyMTStartMonitoring(multitouchCallback, context)
+        lastDeliveredFingerCount = -1
         if isMonitoring == false {
             DebugLog.error(DebugLog.dock, "MultitouchSupport monitoring unavailable")
         } else {
@@ -856,6 +957,7 @@ private final class MultitouchInputMonitor {
         guard isMonitoring else { return }
         SwooshyMTStopMonitoring()
         isMonitoring = false
+        lastDeliveredFingerCount = -1
         DebugLog.info(DebugLog.dock, "MultitouchSupport monitoring stopped")
     }
 
@@ -865,6 +967,8 @@ private final class MultitouchInputMonitor {
         timestamp: Double
     ) {
         guard fingerCount > 0 else {
+            guard lastDeliveredFingerCount != 0 else { return }
+            lastDeliveredFingerCount = 0
             onFrame?(
                 TrackpadTouchFrame(
                     touches: [],
@@ -885,6 +989,7 @@ private final class MultitouchInputMonitor {
             )
         }
 
+        lastDeliveredFingerCount = fingerCount
         onFrame?(
             TrackpadTouchFrame(
                 touches: touches,
