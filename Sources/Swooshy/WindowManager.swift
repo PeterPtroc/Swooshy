@@ -573,12 +573,20 @@ struct WindowManager: WindowManaging {
             return
         }
 
-        if minimized, let minimizeButton = try? childElement(
-            attribute: kAXMinimizeButtonAttribute as CFString,
-            from: window
-        ) {
-            try performAction(kAXPressAction as CFString, on: minimizeButton)
-            return
+        if minimized {
+            do {
+                let minimizeButton = try childElement(
+                    attribute: kAXMinimizeButtonAttribute as CFString,
+                    from: window
+                )
+                try performAction(kAXPressAction as CFString, on: minimizeButton)
+                return
+            } catch {
+                DebugLog.debug(
+                    DebugLog.accessibility,
+                    "Fallback minimize via AXMinimizeButton failed: \(error.localizedDescription)"
+                )
+            }
         }
 
         throw WindowManagerError.unableToPerformAction
@@ -636,7 +644,14 @@ struct WindowManager: WindowManaging {
     }
 
     private func tryCloseViaCloseButton(_ window: AXUIElement, context: String) -> Bool {
-        guard let closeButton = try? childElement(attribute: kAXCloseButtonAttribute as CFString, from: window) else {
+        let closeButton: AXUIElement
+        do {
+            closeButton = try childElement(attribute: kAXCloseButtonAttribute as CFString, from: window)
+        } catch {
+            DebugLog.debug(
+                DebugLog.accessibility,
+                "Failed to resolve AXCloseButton while \(context): \(error.localizedDescription)"
+            )
             return false
         }
 
@@ -674,7 +689,17 @@ struct WindowManager: WindowManaging {
             throw WindowManagerError.noAlternateWindow
         }
 
-        let currentDescriptor = currentWindow.flatMap { try? windowDescriptor(for: $0) }
+        let currentDescriptor = currentWindow.flatMap { window in
+            do {
+                return try windowDescriptor(for: window)
+            } catch {
+                DebugLog.debug(
+                    DebugLog.windows,
+                    "Unable to derive current window descriptor for cycling: \(error.localizedDescription)"
+                )
+                return nil
+            }
+        }
         guard let targetDescriptor = cycleSessions.nextTarget(
             for: app.processIdentifier,
             liveOrder: descriptors,
@@ -690,12 +715,24 @@ struct WindowManager: WindowManaging {
     }
 
     private func preferredCycleReferenceWindow(in appElement: AXUIElement) -> AXUIElement? {
-        if let focusedWindow = try? focusedWindowElement(in: appElement) {
+        do {
+            let focusedWindow = try focusedWindowElement(in: appElement)
             return focusedWindow
+        } catch {
+            DebugLog.debug(
+                DebugLog.windows,
+                "Unable to resolve focused window for cycle reference: \(error.localizedDescription)"
+            )
         }
 
-        if let mainWindow = try? mainWindowElement(in: appElement) {
+        do {
+            let mainWindow = try mainWindowElement(in: appElement)
             return mainWindow
+        } catch {
+            DebugLog.debug(
+                DebugLog.windows,
+                "Unable to resolve main window for cycle reference: \(error.localizedDescription)"
+            )
         }
 
         return nil
