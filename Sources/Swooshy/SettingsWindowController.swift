@@ -249,8 +249,8 @@ private struct SettingsMappingCard<Rows: View>: View {
         VStack(spacing: 0) {
             rows
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color(nsColor: .controlBackgroundColor))
@@ -266,7 +266,7 @@ private struct DockGestureMappingsSection: View {
     @Bindable var settingsStore: SettingsStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
             SettingsSectionHeader(title: settingsStore.localized("settings.section.dock_gestures"))
 
             SettingsMappingCard {
@@ -284,11 +284,13 @@ private struct DockGestureMappingsSection: View {
                 settingsStore.resetDockGestureActionsToDefaults()
             }
             .disabled(settingsStore.dockGesturesEnabled == false)
+            .padding(.top, 2)
 
             Text(settingsStore.localized("settings.dock_gestures.footer"))
-                .font(.body)
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
+        .padding(.bottom, 10)
     }
 }
 
@@ -296,7 +298,7 @@ private struct TitleBarGestureMappingsSection: View {
     @Bindable var settingsStore: SettingsStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
             SettingsSectionHeader(title: settingsStore.localized("settings.section.title_bar_gestures"))
 
             SettingsMappingCard {
@@ -314,11 +316,13 @@ private struct TitleBarGestureMappingsSection: View {
                 settingsStore.resetTitleBarGestureActionsToDefaults()
             }
             .disabled(settingsStore.titleBarGesturesEnabled == false)
+            .padding(.top, 2)
 
             Text(settingsStore.localized("settings.title_bar_gestures.footer"))
-                .font(.body)
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
+        .padding(.bottom, 10)
     }
 }
 
@@ -400,7 +404,7 @@ private struct DockGestureActionRow: View {
     let gesture: DockGestureKind
 
     var body: some View {
-        HStack {
+        HStack(spacing: 20) {
             Toggle(
                 gesture.title(preferredLanguages: settingsStore.preferredLanguages),
                 isOn: Binding(
@@ -426,6 +430,7 @@ private struct DockGestureActionRow: View {
             .frame(width: 220)
             .disabled(settingsStore.dockGestureIsEnabled(for: gesture) == false)
         }
+        .padding(.vertical, 14)
     }
 }
 
@@ -434,7 +439,7 @@ private struct TitleBarGestureActionRow: View {
     let gesture: DockGestureKind
 
     var body: some View {
-        HStack {
+        HStack(spacing: 20) {
             Toggle(
                 gesture.title(preferredLanguages: settingsStore.preferredLanguages),
                 isOn: Binding(
@@ -463,6 +468,7 @@ private struct TitleBarGestureActionRow: View {
             .frame(width: 220)
             .disabled(settingsStore.titleBarGestureIsEnabled(for: gesture) == false)
         }
+        .padding(.vertical, 14)
     }
 }
 
