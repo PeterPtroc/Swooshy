@@ -43,7 +43,7 @@ open dist/Swooshy.app
 - `DIST_DIR`，默认值：`dist`
 - `APP_NAME`，默认值：`Swooshy.app`
 - `ZIP_NAME`，默认值：`Swooshy-macOS.zip`
-- `APP_VERSION`，默认值：`0.1.0`
+- `APP_VERSION`，默认值：`2.2.5`
 - `BUNDLE_ID`，默认值：`com.xiamiyu123.swooshy`
 - `REQUIRE_APP_ICON`，默认值：`1`，若找不到应用图标则打包失败
 - `SKIP_CODESIGN=1` 可跳过 ad-hoc 签名
@@ -51,7 +51,7 @@ open dist/Swooshy.app
 示例：
 
 ```bash
-APP_VERSION=0.2.0 BUNDLE_ID=com.example.swooshy ./scripts/package-macos-app.sh
+APP_VERSION=2.2.5 BUNDLE_ID=com.example.swooshy ./scripts/package-macos-app.sh
 ```
 
 ## 更新 Launchpad 图标
