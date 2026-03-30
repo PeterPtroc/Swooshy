@@ -44,7 +44,7 @@ You can customize packaging with environment variables:
 - `DIST_DIR` (default: `dist`)
 - `APP_NAME` (default: `Swooshy.app`)
 - `ZIP_NAME` (default: `Swooshy-macOS.zip`)
-- `APP_VERSION` (default: `0.1.0`)
+- `APP_VERSION` (default: `2.2.5`)
 - `BUNDLE_ID` (default: `com.xiamiyu123.swooshy`)
 - `REQUIRE_APP_ICON` (default: `1`, fail packaging when app icon is missing)
 - `SKIP_CODESIGN=1` to skip ad-hoc signing
@@ -52,7 +52,7 @@ You can customize packaging with environment variables:
 Example:
 
 ```bash
-APP_VERSION=0.2.0 BUNDLE_ID=com.example.swooshy ./scripts/package-macos-app.sh
+APP_VERSION=2.2.5 BUNDLE_ID=com.example.swooshy ./scripts/package-macos-app.sh
 ```
 
 ## Update Launchpad Icon
