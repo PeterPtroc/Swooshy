@@ -11,6 +11,7 @@ VERSION="$1"
 URL="$2"
 SHA256="$3"
 OUTPUT_PATH="$4"
+BUNDLE_ID="${BUNDLE_ID:-com.xiamiyu123.swooshy}"
 
 mkdir -p "$(dirname "$OUTPUT_PATH")"
 
@@ -28,5 +29,19 @@ cask "swooshy" do
   depends_on macos: ">= :sonoma"
 
   app "Swooshy.app"
+
+  # Reset stale Accessibility TCC records after install/upgrade.
+  postflight do
+    system_command "tccutil",
+                   args: ["reset", "Accessibility", "$BUNDLE_ID"],
+                   sudo: false
+  end
+
+  # Remove records after uninstall.
+  uninstall_postflight do
+    system_command "tccutil",
+                   args: ["reset", "Accessibility", "$BUNDLE_ID"],
+                   sudo: false
+  end
 end
 EOF
