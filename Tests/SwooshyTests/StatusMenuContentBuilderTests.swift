@@ -18,7 +18,7 @@ struct StatusMenuContentBuilderTests {
         #expect(entries[11].title == "向前切换当前应用窗口")
         #expect(entries[12].title == "向后切换当前应用窗口")
         #expect(entries[14].title == "设置…")
-        #expect(entries[16].title == "使用说明")
+        #expect(entries[16].title == "使用111")
         #expect(entries[17].title == "退出 Swooshy")
     }
 
