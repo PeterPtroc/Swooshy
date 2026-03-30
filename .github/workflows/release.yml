@@ -30,7 +30,7 @@ jobs:
     name: Build And Publish Release
     runs-on: macos-latest
     env:
-      HOMEBREW_TAP_REPO: git@github.com:xiamiyu123/homebrew-swooshy.git
+      HOMEBREW_TAP_REPO: git@github.com:peterptroc/homebrew-swooshy.git
       HOMEBREW_TAP_BRANCH: main
       COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
     steps:
