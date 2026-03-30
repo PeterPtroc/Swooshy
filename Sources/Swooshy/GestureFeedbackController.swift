@@ -11,128 +11,149 @@ protocol GestureFeedbackPresenting {
     )
 }
 
+struct GestureHUDRenderModel: Equatable {
+    let style: GestureHUDStyle
+    let gesture: DockGestureKind
+    let gestureTitle: String
+    let actionTitle: String
+}
+
+struct GestureHUDStyleConfiguration {
+    let panelSize: NSSize
+    let cornerRadius: CGFloat
+    let material: NSVisualEffectView.Material
+    let blendingMode: NSVisualEffectView.BlendingMode
+    let backgroundColor: NSColor
+    let borderColor: NSColor
+    let borderWidth: CGFloat
+    let titleFontSize: CGFloat
+    let glyphColor: NSColor
+    let glyphSecondaryColor: NSColor
+    let glyphLineWidth: CGFloat
+    let glyphGlowLineWidth: CGFloat
+    let glyphBadgeBackgroundColor: NSColor
+    let glyphBadgeBorderColor: NSColor
+    let glyphBadgeBorderWidth: CGFloat
+    let glyphBadgeCornerRadius: CGFloat
+}
+
+func gestureHUDStyleConfiguration(for style: GestureHUDStyle) -> GestureHUDStyleConfiguration {
+    switch style {
+    case .classic:
+        return GestureHUDStyleConfiguration(
+            panelSize: NSSize(width: 208, height: 42),
+            cornerRadius: 14,
+            material: .hudWindow,
+            blendingMode: .behindWindow,
+            backgroundColor: .clear,
+            borderColor: .clear,
+            borderWidth: 0,
+            titleFontSize: 13,
+            glyphColor: NSColor.labelColor.withAlphaComponent(0.9),
+            glyphSecondaryColor: NSColor.labelColor.withAlphaComponent(0.16),
+            glyphLineWidth: 2.2,
+            glyphGlowLineWidth: 0,
+            glyphBadgeBackgroundColor: .clear,
+            glyphBadgeBorderColor: .clear,
+            glyphBadgeBorderWidth: 0,
+            glyphBadgeCornerRadius: 0
+        )
+    case .elegant:
+        return GestureHUDStyleConfiguration(
+            panelSize: NSSize(width: 182, height: 40),
+            cornerRadius: 12,
+            material: .hudWindow,
+            blendingMode: .behindWindow,
+            backgroundColor: .clear,
+            borderColor: .clear,
+            borderWidth: 0,
+            titleFontSize: 12,
+            glyphColor: NSColor.white.withAlphaComponent(0.95),
+            glyphSecondaryColor: NSColor.labelColor.withAlphaComponent(0.16),
+            glyphLineWidth: 2.2,
+            glyphGlowLineWidth: 4.8,
+            glyphBadgeBackgroundColor: .clear,
+            glyphBadgeBorderColor: .clear,
+            glyphBadgeBorderWidth: 0,
+            glyphBadgeCornerRadius: 8
+        )
+    case .minimal:
+        return GestureHUDStyleConfiguration(
+            panelSize: NSSize(width: 40, height: 40),
+            cornerRadius: 10,
+            material: .hudWindow,
+            blendingMode: .behindWindow,
+            backgroundColor: .clear,
+            borderColor: .clear,
+            borderWidth: 0,
+            titleFontSize: 13,
+            glyphColor: NSColor.white.withAlphaComponent(0.95),
+            glyphSecondaryColor: NSColor.labelColor.withAlphaComponent(0.16),
+            glyphLineWidth: 2.2,
+            glyphGlowLineWidth: 4.8,
+            glyphBadgeBackgroundColor: .clear,
+            glyphBadgeBorderColor: .clear,
+            glyphBadgeBorderWidth: 0,
+            glyphBadgeCornerRadius: 8
+        )
+    }
+}
+
 @MainActor
-final class GestureFeedbackController: GestureFeedbackPresenting {
-    private let settingsStore: SettingsStore
-    private let panel: NSPanel
+final class GestureHUDRenderView: NSVisualEffectView {
     private let messageLabel = NSTextField(labelWithString: "")
     private let titleLabel = NSTextField(labelWithString: "")
     private let glyphView = GestureGlyphView(frame: .zero)
     private let glyphBadgeView = NSView(frame: .zero)
-    private var dismissTask: Task<Void, Never>?
-    private var hideGeneration: UInt64 = 0
     private var currentStyle: GestureHUDStyle?
-    private var currentPanelSize = NSSize(width: 208, height: 42)
 
-    private let verticalOffset: CGFloat = 18
-    private let sideMargin: CGFloat = 10
-    private let dismissalDelay: UInt64 = 700_000_000
-
-    private struct StyleConfiguration {
-        let panelSize: NSSize
-        let cornerRadius: CGFloat
-        let material: NSVisualEffectView.Material
-        let blendingMode: NSVisualEffectView.BlendingMode
-        let backgroundColor: NSColor
-        let borderColor: NSColor
-        let borderWidth: CGFloat
-        let titleFontSize: CGFloat
-        let glyphColor: NSColor
-        let glyphSecondaryColor: NSColor
-        let glyphLineWidth: CGFloat
-        let glyphGlowLineWidth: CGFloat
-        let glyphBadgeBackgroundColor: NSColor
-        let glyphBadgeBorderColor: NSColor
-        let glyphBadgeBorderWidth: CGFloat
-        let glyphBadgeCornerRadius: CGFloat
+    static func panelSize(for style: GestureHUDStyle) -> NSSize {
+        gestureHUDStyleConfiguration(for: style).panelSize
     }
 
-    init(settingsStore: SettingsStore) {
-        self.settingsStore = settingsStore
-        panel = NSPanel(
-            contentRect: NSRect(origin: .zero, size: currentPanelSize),
-            styleMask: [.nonactivatingPanel, .hudWindow, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-
-        panel.level = .statusBar
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
-        panel.backgroundColor = .clear
-        panel.isOpaque = false
-        panel.hasShadow = true
-        panel.isReleasedWhenClosed = false
-        panel.hidesOnDeactivate = false
-        panel.ignoresMouseEvents = true
-        panel.titleVisibility = .hidden
-        panel.titlebarAppearsTransparent = true
-        panel.standardWindowButton(.closeButton)?.isHidden = true
-        panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
-        panel.standardWindowButton(.zoomButton)?.isHidden = true
-
-        configureContent(for: settingsStore.gestureHUDStyle)
+    var currentPanelSize: NSSize {
+        GestureHUDRenderView.panelSize(for: currentStyle ?? .elegant)
     }
 
-    func show(
-        gesture: DockGestureKind,
-        gestureTitle: String,
-        actionTitle: String,
-        anchor: CGPoint? = nil
-    ) {
-        configureContent(for: settingsStore.gestureHUDStyle)
-        messageLabel.stringValue = "\(gestureTitle) · \(actionTitle)"
-        titleLabel.stringValue = actionTitle
-        glyphView.gesture = gesture
+    override var intrinsicContentSize: NSSize {
+        currentPanelSize
+    }
 
-        let anchorPoint = anchor ?? NSEvent.mouseLocation
-        panel.setFrame(frame(for: anchorPoint), display: false)
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        translatesAutoresizingMaskIntoConstraints = false
+    }
 
-        hideGeneration &+= 1
-        dismissTask?.cancel()
-        panel.orderFrontRegardless()
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        return nil
+    }
 
-        panel.animator().alphaValue = 1
-
-        let delay = self.dismissalDelay
-        let generation = hideGeneration
-
-        dismissTask = Task { [weak self] in
-            do {
-                try await Task.sleep(nanoseconds: delay)
-            } catch is CancellationError {
-                return
-            } catch {
-                DebugLog.debug(DebugLog.dock, "HUD dismiss delay task failed unexpectedly: \(error.localizedDescription)")
-                return
-            }
-            guard !Task.isCancelled else { return }
-
-            await MainActor.run {
-                self?.hide(expectedGeneration: generation)
-            }
+    func render(model: GestureHUDRenderModel) {
+        if currentStyle != model.style || subviews.isEmpty {
+            rebuild(for: model.style)
         }
+
+        glyphView.gesture = model.gesture
+        messageLabel.stringValue = "\(model.gestureTitle) · \(model.actionTitle)"
+        titleLabel.stringValue = model.actionTitle
     }
 
-    private func configureContent(for style: GestureHUDStyle) {
-        guard currentStyle != style || panel.contentView == nil else { return }
-
-        let configuration = styleConfiguration(for: style)
+    private func rebuild(for style: GestureHUDStyle) {
+        let configuration = gestureHUDStyleConfiguration(for: style)
         currentStyle = style
-        panel.hasShadow = style != .minimal
-        currentPanelSize = configuration.panelSize
-        panel.setContentSize(currentPanelSize)
+        frame = NSRect(origin: .zero, size: configuration.panelSize)
+        material = configuration.material
+        blendingMode = configuration.blendingMode
+        state = .active
+        wantsLayer = true
+        layer?.cornerRadius = configuration.cornerRadius
+        layer?.masksToBounds = true
+        layer?.backgroundColor = configuration.backgroundColor.cgColor
+        layer?.borderColor = configuration.borderColor.cgColor
+        layer?.borderWidth = configuration.borderWidth
 
-        let contentRoot = NSVisualEffectView(frame: NSRect(origin: .zero, size: currentPanelSize))
-        contentRoot.material = configuration.material
-        contentRoot.blendingMode = configuration.blendingMode
-        contentRoot.state = .active
-        contentRoot.wantsLayer = true
-        contentRoot.layer?.cornerRadius = configuration.cornerRadius
-        contentRoot.layer?.masksToBounds = true
-        contentRoot.layer?.backgroundColor = configuration.backgroundColor.cgColor
-        contentRoot.layer?.borderColor = configuration.borderColor.cgColor
-        contentRoot.layer?.borderWidth = configuration.borderWidth
-        contentRoot.translatesAutoresizingMaskIntoConstraints = false
+        subviews.forEach { $0.removeFromSuperview() }
 
         messageLabel.font = .systemFont(ofSize: 12, weight: .medium)
         messageLabel.textColor = .labelColor
@@ -165,12 +186,12 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
 
         switch style {
         case .classic:
-            contentRoot.addSubview(messageLabel)
+            addSubview(messageLabel)
             NSLayoutConstraint.activate([
-                messageLabel.leadingAnchor.constraint(equalTo: contentRoot.leadingAnchor, constant: 12),
-                messageLabel.trailingAnchor.constraint(equalTo: contentRoot.trailingAnchor, constant: -12),
-                messageLabel.topAnchor.constraint(equalTo: contentRoot.topAnchor, constant: 10),
-                messageLabel.bottomAnchor.constraint(equalTo: contentRoot.bottomAnchor, constant: -10),
+                messageLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+                messageLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+                messageLabel.topAnchor.constraint(equalTo: topAnchor, constant: 10),
+                messageLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -10),
             ])
         case .elegant:
             let row = NSStackView()
@@ -188,13 +209,13 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
             glyphBadgeView.addSubview(glyphView)
             row.addArrangedSubview(glyphBadgeView)
             row.addArrangedSubview(textStack)
-            contentRoot.addSubview(row)
+            addSubview(row)
 
             NSLayoutConstraint.activate([
-                row.leadingAnchor.constraint(equalTo: contentRoot.leadingAnchor),
-                row.trailingAnchor.constraint(equalTo: contentRoot.trailingAnchor),
-                row.topAnchor.constraint(equalTo: contentRoot.topAnchor),
-                row.bottomAnchor.constraint(equalTo: contentRoot.bottomAnchor),
+                row.leadingAnchor.constraint(equalTo: leadingAnchor),
+                row.trailingAnchor.constraint(equalTo: trailingAnchor),
+                row.topAnchor.constraint(equalTo: topAnchor),
+                row.bottomAnchor.constraint(equalTo: bottomAnchor),
                 glyphBadgeView.widthAnchor.constraint(equalToConstant: 24),
                 glyphBadgeView.heightAnchor.constraint(equalToConstant: 24),
                 glyphView.centerXAnchor.constraint(equalTo: glyphBadgeView.centerXAnchor),
@@ -204,11 +225,11 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
             ])
         case .minimal:
             glyphBadgeView.addSubview(glyphView)
-            contentRoot.addSubview(glyphBadgeView)
+            addSubview(glyphBadgeView)
 
             NSLayoutConstraint.activate([
-                glyphBadgeView.centerXAnchor.constraint(equalTo: contentRoot.centerXAnchor),
-                glyphBadgeView.centerYAnchor.constraint(equalTo: contentRoot.centerYAnchor),
+                glyphBadgeView.centerXAnchor.constraint(equalTo: centerXAnchor),
+                glyphBadgeView.centerYAnchor.constraint(equalTo: centerYAnchor),
                 glyphBadgeView.widthAnchor.constraint(equalToConstant: 20),
                 glyphBadgeView.heightAnchor.constraint(equalToConstant: 20),
                 glyphView.centerXAnchor.constraint(equalTo: glyphBadgeView.centerXAnchor),
@@ -217,9 +238,106 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
                 glyphView.heightAnchor.constraint(equalToConstant: 18),
             ])
         }
+    }
+}
 
-        panel.contentView = contentRoot
+@MainActor
+final class GestureFeedbackController: GestureFeedbackPresenting {
+    private let settingsStore: SettingsStore
+    private let panel: NSPanel
+    private let renderView = GestureHUDRenderView(frame: .zero)
+    private var dismissTask: Task<Void, Never>?
+    private var hideGeneration: UInt64 = 0
+    private var currentPanelSize = GestureHUDRenderView.panelSize(for: .elegant)
+
+    private let verticalOffset: CGFloat = 18
+    private let sideMargin: CGFloat = 10
+    private let dismissalDelay: UInt64 = 700_000_000
+
+    init(settingsStore: SettingsStore) {
+        self.settingsStore = settingsStore
+        panel = NSPanel(
+            contentRect: NSRect(origin: .zero, size: currentPanelSize),
+            styleMask: [.nonactivatingPanel, .hudWindow, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+
+        panel.level = .statusBar
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
+        panel.hasShadow = true
+        panel.isReleasedWhenClosed = false
+        panel.hidesOnDeactivate = false
+        panel.ignoresMouseEvents = true
+        panel.titleVisibility = .hidden
+        panel.titlebarAppearsTransparent = true
+        panel.standardWindowButton(.closeButton)?.isHidden = true
+        panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        panel.standardWindowButton(.zoomButton)?.isHidden = true
+
+        renderView.render(
+            model: GestureHUDRenderModel(
+                style: settingsStore.gestureHUDStyle,
+                gesture: .swipeUp,
+                gestureTitle: "",
+                actionTitle: ""
+            )
+        )
+        currentPanelSize = renderView.currentPanelSize
+        panel.setContentSize(currentPanelSize)
+        panel.contentView = renderView
+        panel.hasShadow = settingsStore.gestureHUDStyle != .minimal
         panel.alphaValue = 0
+    }
+
+    func show(
+        gesture: DockGestureKind,
+        gestureTitle: String,
+        actionTitle: String,
+        anchor: CGPoint? = nil
+    ) {
+        let style = settingsStore.gestureHUDStyle
+        renderView.render(
+            model: GestureHUDRenderModel(
+                style: style,
+                gesture: gesture,
+                gestureTitle: gestureTitle,
+                actionTitle: actionTitle
+            )
+        )
+        currentPanelSize = renderView.currentPanelSize
+        panel.hasShadow = style != .minimal
+        panel.setContentSize(currentPanelSize)
+
+        let anchorPoint = anchor ?? NSEvent.mouseLocation
+        panel.setFrame(frame(for: anchorPoint), display: false)
+
+        hideGeneration &+= 1
+        dismissTask?.cancel()
+        panel.orderFrontRegardless()
+
+        panel.animator().alphaValue = 1
+
+        let delay = self.dismissalDelay
+        let generation = hideGeneration
+
+        dismissTask = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: delay)
+            } catch is CancellationError {
+                return
+            } catch {
+                DebugLog.debug(DebugLog.dock, "HUD dismiss delay task failed unexpectedly: \(error.localizedDescription)")
+                return
+            }
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                self?.hide(expectedGeneration: generation)
+            }
+        }
     }
 
     private func frame(for anchorPoint: CGPoint) -> NSRect {
@@ -261,67 +379,6 @@ final class GestureFeedbackController: GestureFeedbackPresenting {
         }
     }
 
-    private func styleConfiguration(for style: GestureHUDStyle) -> StyleConfiguration {
-        switch style {
-        case .classic:
-            return StyleConfiguration(
-                panelSize: NSSize(width: 208, height: 42),
-                cornerRadius: 14,
-                material: .hudWindow,
-                blendingMode: .behindWindow,
-                backgroundColor: .clear,
-                borderColor: .clear,
-                borderWidth: 0,
-                titleFontSize: 13,
-                glyphColor: NSColor.labelColor.withAlphaComponent(0.9),
-                glyphSecondaryColor: NSColor.labelColor.withAlphaComponent(0.16),
-                glyphLineWidth: 2.2,
-                glyphGlowLineWidth: 0,
-                glyphBadgeBackgroundColor: .clear,
-                glyphBadgeBorderColor: .clear,
-                glyphBadgeBorderWidth: 0,
-                glyphBadgeCornerRadius: 0
-            )
-        case .elegant:
-            return StyleConfiguration(
-                panelSize: NSSize(width: 182, height: 40),
-                cornerRadius: 12,
-                material: .hudWindow,
-                blendingMode: .behindWindow,
-                backgroundColor: .clear,
-                borderColor: .clear,
-                borderWidth: 0,
-                titleFontSize: 12,
-                glyphColor: NSColor.white.withAlphaComponent(0.95),
-                glyphSecondaryColor: NSColor.labelColor.withAlphaComponent(0.16),
-                glyphLineWidth: 2.2,
-                glyphGlowLineWidth: 4.8,
-                glyphBadgeBackgroundColor: .clear,
-                glyphBadgeBorderColor: .clear,
-                glyphBadgeBorderWidth: 0,
-                glyphBadgeCornerRadius: 8
-            )
-        case .minimal:
-            return StyleConfiguration(
-                panelSize: NSSize(width: 40, height: 40),
-                cornerRadius: 10,
-                material: .hudWindow,
-                blendingMode: .behindWindow,
-                backgroundColor: .clear,
-                borderColor: .clear,
-                borderWidth: 0,
-                titleFontSize: 13,
-                glyphColor: NSColor.white.withAlphaComponent(0.95),
-                glyphSecondaryColor: NSColor.labelColor.withAlphaComponent(0.16),
-                glyphLineWidth: 2.2,
-                glyphGlowLineWidth: 4.8,
-                glyphBadgeBackgroundColor: .clear,
-                glyphBadgeBorderColor: .clear,
-                glyphBadgeBorderWidth: 0,
-                glyphBadgeCornerRadius: 8
-            )
-        }
-    }
 }
 
 private final class GestureGlyphView: NSView {

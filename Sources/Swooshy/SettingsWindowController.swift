@@ -151,6 +151,8 @@ private struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.menu)
+
+                GestureHUDPreviewStrip(settingsStore: settingsStore)
             } header: {
                 Text(settingsStore.localized("settings.section.gestures"))
             } footer: {
@@ -248,6 +250,79 @@ private struct SettingsView: View {
         } else {
             Text(title)
         }
+    }
+}
+
+private struct GestureHUDPreviewStrip: View {
+    @Bindable var settingsStore: SettingsStore
+
+    var body: some View {
+        let previewStyle = settingsStore.gestureHUDStyle
+
+        VStack(alignment: .leading, spacing: 10) {
+            GestureHUDPreviewCard(
+                style: previewStyle,
+                gesture: .pinchIn,
+                gestureTitle: DockGestureKind.pinchIn.title(preferredLanguages: settingsStore.preferredLanguages),
+                actionTitle: settingsStore.dockGestureAction(for: .pinchIn).title(
+                    preferredLanguages: settingsStore.preferredLanguages
+                )
+            )
+
+            GestureHUDPreviewCard(
+                style: previewStyle,
+                gesture: .swipeUp,
+                gestureTitle: DockGestureKind.swipeUp.title(preferredLanguages: settingsStore.preferredLanguages),
+                actionTitle: settingsStore.dockGestureAction(for: .swipeUp).title(
+                    preferredLanguages: settingsStore.preferredLanguages
+                )
+            )
+        }
+        .padding(.top, 4)
+    }
+}
+
+private struct GestureHUDPreviewCard: View {
+    let style: GestureHUDStyle
+    let gesture: DockGestureKind
+    let gestureTitle: String
+    let actionTitle: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(gestureTitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            GestureHUDRenderHost(
+                model: GestureHUDRenderModel(
+                    style: style,
+                    gesture: gesture,
+                    gestureTitle: gestureTitle,
+                    actionTitle: actionTitle
+                )
+            )
+            .frame(
+                width: GestureHUDRenderView.panelSize(for: style).width,
+                height: GestureHUDRenderView.panelSize(for: style).height,
+                alignment: .leading
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct GestureHUDRenderHost: NSViewRepresentable {
+    let model: GestureHUDRenderModel
+
+    func makeNSView(context: Context) -> GestureHUDRenderView {
+        let view = GestureHUDRenderView(frame: NSRect(origin: .zero, size: GestureHUDRenderView.panelSize(for: model.style)))
+        view.render(model: model)
+        return view
+    }
+
+    func updateNSView(_ nsView: GestureHUDRenderView, context: Context) {
+        nsView.render(model: model)
     }
 }
 
