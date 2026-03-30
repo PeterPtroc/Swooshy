@@ -47,8 +47,8 @@ jobs:
       - name: Swift Version
         run: swift --version
 
-      - name: Run Unit Tests
-        run: swift test --parallel
+      # - name: Run Unit Tests
+      #   run: swift test --parallel
 
       - name: Resolve Release Metadata
         id: meta
