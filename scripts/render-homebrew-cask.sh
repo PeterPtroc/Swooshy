@@ -21,10 +21,10 @@ cask "swooshy" do
   sha256 "$SHA256"
 
   url "$URL",
-      verified: "github.com/xiamiyu123/Swooshy/"
+      verified: "github.com/PeterPtroc/Sweeesh/"
   name "Swooshy"
   desc "Open-source macOS touchpad-first window utility"
-  homepage "https://github.com/xiamiyu123/Swooshy"
+  homepage "https://github.com/PeterPtroc/Sweeesh"
 
   depends_on macos: ">= :sonoma"
 
