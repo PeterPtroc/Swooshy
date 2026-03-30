@@ -11,6 +11,7 @@ VERSION="$1"
 URL="$2"
 SHA256="$3"
 OUTPUT_PATH="$4"
+BUNDLE_ID="${BUNDLE_ID:-com.xiamiyu123.swooshy}"
 
 mkdir -p "$(dirname "$OUTPUT_PATH")"
 
@@ -28,5 +29,21 @@ cask "swooshy" do
   depends_on macos: ">= :sonoma"
 
   app "Swooshy.app"
+
+  uninstall quit: "$BUNDLE_ID"
+
+  # reset accessibility records after install/upgrade.
+  postflight do
+    # tccutil exits non-zero when there is no existing record yet.
+    system_command "/bin/sh",
+                   args: ["-c", "tccutil reset Accessibility \"\$1\" >/dev/null 2>&1 || true", "_", "$BUNDLE_ID"],
+                   sudo: false
+  end
+
+  uninstall_postflight do
+    system_command "/bin/sh",
+                   args: ["-c", "tccutil reset Accessibility \"\$1\" >/dev/null 2>&1 || true", "_", "$BUNDLE_ID"],
+                   sudo: false
+  end
 end
 EOF
